@@ -6,7 +6,7 @@
 <title>Bitbot On Call</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 /* Layout: full-bleed deep-space stage. Name top-left, one live pipeline status chip bottom-centre. Single dark look on purpose (space). */
 :root {
@@ -19,8 +19,8 @@
   --heal: #B48BFF;        /* Bitbot teal */
   --panel: rgba(16, 9, 34, 0.72);
   --line: rgba(241, 234, 251, 0.14);
-  --font-display: "TT Norms Pro", "Avenir Next", system-ui, sans-serif;   /* brand: TT Norms Pro Bold 700 headlines */
-  --font-body: "TT Norms Pro", "Avenir Next", system-ui, -apple-system, "Segoe UI", sans-serif;   /* Regular 400 copy, Medium 500 labels */
+  --font-display: "TT Norms Pro", "Figtree", "Avenir Next", system-ui, sans-serif;   /* brand: TT Norms Pro Bold 700 headlines */
+  --font-body: "TT Norms Pro", "Figtree", "Avenir Next", system-ui, -apple-system, "Segoe UI", sans-serif;   /* Regular 400 copy, Medium 500 labels */
   --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;   /* technical labels */
   color-scheme: dark;
 }
@@ -156,6 +156,7 @@ body.asset-mode { background: transparent; } body.asset-mode * { transition: non
 .toggle.off { background: #CBBBD9; } .toggle.off::after { left: 3px; }
 .fix svg { display: block; width: 100%; height: auto; }
 /* ---------- brand pass (Generative Design System): TT Norms Pro + IBM Plex Mono, playful gradients, brand palette ---------- */
+/* FONT SWITCH: brand font TT Norms Pro is self-hosted from fonts/. To switch to the free fallback, delete these three @font-face rules (or the fonts/ folder): every font stack falls back to Figtree from Google Fonts automatically. */
 @font-face { font-family: "TT Norms Pro"; src: url("fonts/TTNormsPro-Regular.otf") format("opentype"); font-weight: 400; font-display: swap; }
 @font-face { font-family: "TT Norms Pro"; src: url("fonts/TTNormsPro-Medium.otf") format("opentype"); font-weight: 500; font-display: swap; }
 @font-face { font-family: "TT Norms Pro"; src: url("fonts/TTNormsPro-Bold.otf") format("opentype"); font-weight: 700; font-display: swap; }
