@@ -267,6 +267,7 @@ body.asset-mode { background: transparent; } body.asset-mode * { transition: non
 
 .fix .intro-gift { width: 96px; height: 96px; object-fit: contain; filter: drop-shadow(0 10px 10px rgba(61, 18, 95, .3)); }
 @media (prefers-reduced-motion: reduce) { .hud-gift .box, .hud-gift.wiggle .box { animation: none; } }
+.fix-logo img { display: block; height: 22px; width: auto; }
 </style>
 
 </head>
@@ -292,7 +293,7 @@ body.asset-mode { background: transparent; } body.asset-mode * { transition: non
   <section class="fix" id="fix" role="dialog" aria-labelledby="fixTitle" hidden></section>
   <section class="fix end" id="endCard" role="dialog" aria-labelledby="endTitle" hidden></section>
   <section class="fix intro" id="introCard" role="dialog" aria-labelledby="introTitle" hidden>
-    <div class="fix-bar"><span class="fix-logo"><svg viewBox="0 0 20 16" aria-hidden="true"><rect x="1" y="3" width="18" height="12" rx="4" fill="none" stroke="#fff" stroke-width="1.8"/><path d="M10 0v3" stroke="#fff" stroke-width="1.8"/><circle cx="7" cy="9" r="1.2" fill="#fff"/><circle cx="13" cy="9" r="1.2" fill="#fff"/></svg>bitrise</span></div>
+    <div class="fix-bar"><span class="fix-logo"><img src="img/bitrise-logo.svg" alt="Bitrise" width="85" height="24"></span></div>
     <div class="fix-body intro-body"><div class="intro-bg" aria-hidden="true"><img class="intro-pal intro-bot" src="img/bitbot-flying.webp" alt=""><img class="intro-pal intro-cat" src="img/purrcat-flying.webp" alt=""></div>
       <img class="intro-gift" src="img/mystery-box.webp" alt="">
       <h2 id="introTitle">Save your apps from failing with Bitbot</h2>
@@ -554,7 +555,7 @@ function ember(p) {
 const endEl = document.getElementById("endCard"); let endShown = false;
 function showEnd(won, gold) {
   endShown = true; const alive = pkgs.filter(q => !q.dead && !q.die).length;
-  endEl.innerHTML = `<div class="fix-bar"><span class="fix-logo"><svg viewBox="0 0 20 16" aria-hidden="true"><rect x="1" y="3" width="18" height="12" rx="4" fill="none" stroke="#fff" stroke-width="1.8"/><path d="M10 0v3" stroke="#fff" stroke-width="1.8"/><circle cx="7" cy="9" r="1.2" fill="#fff"/><circle cx="13" cy="9" r="1.2" fill="#fff"/></svg>bitrise</span></div>
+  endEl.innerHTML = `<div class="fix-bar"><span class="fix-logo"><img src="img/bitrise-logo.svg" alt="Bitrise" width="85" height="24"></span></div>
     <div class="fix-body">${won
       ? `<div class="fix-crumb"><b>Bitbot On Call</b> &nbsp;&rsaquo;&nbsp; <b>Run complete</b></div>
          <div class="fix-titlerow"><h2 id="endTitle">Pipeline fully healed</h2></div>
@@ -862,7 +863,7 @@ function openFix(si) {
   fix = { open: true, ready: false };
   if (SIM && !SHOWFIX) { fix.ready = true; return; }                // test captures skip the window
   const F = FIXES[STAGES[si]];
-  fixEl.innerHTML = `<div class="fix-bar"><span class="fix-logo"><svg viewBox="0 0 20 16" aria-hidden="true"><rect x="1" y="3" width="18" height="12" rx="4" fill="none" stroke="#fff" stroke-width="1.8"/><path d="M10 0v3" stroke="#fff" stroke-width="1.8"/><circle cx="7" cy="9" r="1.2" fill="#fff"/><circle cx="13" cy="9" r="1.2" fill="#fff"/></svg>bitrise</span><span class="fix-icons"><i></i></span></div>
+  fixEl.innerHTML = `<div class="fix-bar"><span class="fix-logo"><img src="img/bitrise-logo.svg" alt="Bitrise" width="85" height="24"></span><span class="fix-icons"><i></i></span></div>
     <div class="fix-app">
     <div class="fix-body"><div class="fix-crumb">${F.crumb.split(" &rsaquo; ").map(c => `<b>${c}</b>`).join(" &nbsp;&rsaquo;&nbsp; ")} &nbsp;&rsaquo;</div>
     <div class="fix-titlerow"><h2 id="fixTitle">${F.page}</h2><span class="fix-ghost">${F.tool}</span></div>
