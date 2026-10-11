@@ -1,0 +1,1252 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bitbot On Call</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: full-bleed deep-space stage. Name top-left, one live pipeline status chip bottom-centre. Single dark look on purpose (space). */
+:root {
+  --void: #401563;        /* deep space */
+  --haze: #401563;        /* nebula purple */
+  --ink: #F1EAFB;
+  --muted: #A99BC4;
+  --ok: #CFF7FF;          /* status-light white/cyan */
+  --alert: #FF3B4A;       /* stuck stage red */
+  --heal: #B48BFF;        /* Bitbot teal */
+  --panel: rgba(16, 9, 34, 0.72);
+  --line: rgba(241, 234, 251, 0.14);
+  --font-display: "TT Norms Pro", "Avenir Next", system-ui, sans-serif;   /* brand: TT Norms Pro Bold 700 headlines */
+  --font-body: "TT Norms Pro", "Avenir Next", system-ui, -apple-system, "Segoe UI", sans-serif;   /* Regular 400 copy, Medium 500 labels */
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;   /* technical labels */
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { margin: 0; overflow: hidden; color: var(--ink); font-family: var(--font-body); font-size: 15px;
+  background: var(--void); }
+.stage { position: relative; height: 100%; }
+canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+.brand { position: absolute; top: 20px; left: 20px; right: 20px; pointer-events: none; display: grid; gap: 4px; max-width: 28rem; }
+.brand h1 { margin: 0; font: 700 clamp(22px, 3.6vw, 34px)/1 var(--font-display); letter-spacing: -0.01em; }
+.brand p { margin: 0; color: var(--muted); font-size: 14px; text-wrap: balance; }
+.chip { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+  display: flex; align-items: center; gap: 10px; padding: 10px 16px 10px 12px; border-radius: 999px; background: var(--panel);
+  border: 1px solid var(--line); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); max-width: calc(100% - 32px);
+  font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dot { width: 10px; height: 10px; border-radius: 50%; flex: none; background: var(--ok); box-shadow: 0 0 10px var(--ok); }
+.chip[data-state="stuck"] .dot, .chip[data-state="arriving"] .dot { background: var(--alert); box-shadow: 0 0 12px var(--alert); }
+.chip[data-state="healing"] .dot { background: var(--heal); box-shadow: 0 0 12px var(--heal); }
+.chip .stage-name { font-family: var(--font-mono); letter-spacing: 0.04em; }
+.status[hidden] { display: none; }
+.status { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--font-mono); color: var(--muted); font-size: 13px; pointer-events: none; }
+@media (max-width: 560px) { .brand p { display: none; } .chip { font-size: 13px; } }
+/* ---------- keep-the-apps-alive HUD + countdown badge over the stuck stage ---------- */
+.hud { position: absolute; top: 20px; right: 20px; display: flex; align-items: center; gap: 12px; padding: 8px 14px; border-radius: 999px; background: var(--panel);
+  border: 1px solid var(--line); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.hud b { color: var(--ink); font: 600 15px var(--font-mono); } .hud .lost b { color: var(--ink); } .hud.hurt .lost b { color: var(--alert); }
+.hud .sep { width: 1px; height: 16px; background: var(--line); }
+.hud-gift { --rib: #18C4C3; position: relative; display: flex; align-items: center; gap: 6px; padding-right: 2px; }
+.hud-gift svg { width: 38px; height: 38px; overflow: visible; filter: drop-shadow(0 0 calc(4px + 10px * var(--fill)) rgba(153, 255, 237, calc(.25 + .55 * var(--fill)))); animation: giftIdle 2.4s ease-in-out infinite; transform-origin: 50% 80%; }
+.hud-gift b { font: 700 14px var(--font-mono); color: #99FFED; }
+.hud-gift .lid { transform-box: fill-box; transform-origin: 50% 100%; transition: transform .6s cubic-bezier(.3, 1.6, .5, 1); }
+.hud-gift.wiggle svg { animation: giftWiggle .9s ease-in-out; }
+.hud-gift.open .lid { transform: translate(6px, -14px) rotate(28deg); } .hud-gift.gold { --rib: #FFC24D; }
+@keyframes giftIdle { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-2px) } }
+@keyframes giftWiggle { 0% { transform: scale(1) } 15% { transform: scale(1.35) rotate(-12deg) } 30% { transform: scale(1.3) rotate(10deg) } 45% { transform: scale(1.25) rotate(-8deg) } 60% { transform: scale(1.15) rotate(5deg) } 100% { transform: scale(1) rotate(0) } }
+.token { position: absolute; left: 0; top: 0; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; pointer-events: none; z-index: 5;
+  background: radial-gradient(circle, #FFFFFF 0 25%, #D7ACF9 45%, rgba(176, 108, 255, 0) 70%); box-shadow: 0 0 18px 6px rgba(176, 108, 255, .6); }
+.confetti { position: absolute; left: 0; top: 0; width: 8px; height: 12px; border-radius: 2px; pointer-events: none; z-index: 6; }
+.celeb { position: absolute; top: 76px; right: 20px; width: min(300px, calc(100vw - 32px)); display: grid; gap: 4px; padding: 14px 16px; border-radius: 14px; background: #FFFFFF; color: #2B1340;
+  box-shadow: 0 18px 50px rgba(20, 4, 36, .5); font-size: 14px; opacity: 0; transform: translateY(-14px) scale(.96); transition: opacity .35s ease, transform .45s cubic-bezier(.2, 1.4, .4, 1); pointer-events: none; }
+.celeb.show { opacity: 1; transform: none; }
+.celeb b { font: 700 20px/1.15 var(--font-display); color: #401563; } .celeb span { color: #5E4A70; }
+.celeb-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 2px; }
+.celeb .celeb-tag { font: 600 11px/1 var(--font-mono); letter-spacing: .05em; text-transform: uppercase; color: #0E8584; background: #D9FBF5; padding: 5px 7px; border-radius: 6px; }
+.celeb-pips { display: flex; gap: 4px; } .celeb-pips i { width: 14px; height: 6px; border-radius: 3px; background: #E6D3F7; } .celeb-pips i.on { background: #18C4C3; }
+@media (max-width: 560px) { .celeb { top: auto; bottom: calc(120px + env(safe-area-inset-bottom, 0px)); right: 50%; transform: translate(50%, 14px); } .celeb.show { transform: translate(50%, 0); } }
+.badges { display: flex; gap: 4px; } .badges i { font: 600 10px/1 var(--font-mono); font-style: normal; letter-spacing: .03em; padding: 4px 6px; border-radius: 5px; background: rgba(255,255,255,.07); color: var(--muted); transition: background .4s, color .4s; }
+.badges i.ok { background: #18C4C3; color: #0B2E33; } .badges i.ok::before { content: "\2713\00a0"; }
+.doom { position: absolute; left: 0; top: 0; width: 64px; height: 64px; margin: -32px 0 0 -32px; pointer-events: none; filter: drop-shadow(0 6px 10px rgba(20, 4, 36, .45)); }
+.doom svg { width: 100%; height: 100%; display: block; } .doom .wn { display: none; } .doom.urgent .cd { display: none; } .doom.urgent .wn { display: inline; }
+.doom text { font: 500 17px var(--font-mono); fill: #FFFFFF; }
+.doom.urgent { animation: warnPulse .5s ease-in-out infinite alternate; }
+@keyframes warnPulse { from { transform: scale(1); } to { transform: scale(1.14); } }
+@media (prefers-reduced-motion: reduce) { .doom.urgent { animation: none; } }
+@media (max-width: 560px) { .hud { top: auto; bottom: calc(70px + env(safe-area-inset-bottom, 0px)); right: 50%; transform: translateX(50%); } }
+.intro { text-align: center; }
+.intro-body { justify-items: center; padding: 22px 24px 24px; }
+.doom[hidden], .fix[hidden], .celeb[hidden] { display: none; }
+body.asset-mode { background: transparent; } body.asset-mode * { transition: none !important; } body.asset-mode canvas, body.asset-mode .chip, body.asset-mode .stage > .hud, body.asset-mode .fix-scrim { display: none; }
+#assetWrap { position: absolute; left: 0; top: 0; padding: 40px 40px 64px; display: inline-block; }
+#assetWrap > * { position: relative !important; left: auto !important; top: auto !important; right: auto !important; bottom: auto !important; margin: 0 !important; transform: none !important; opacity: 1 !important; max-height: none !important; overflow: visible !important; }
+#assetWrap > .fix, #assetWrap > .celeb { width: 620px; } #assetWrap > .celeb { width: 300px; } #assetWrap > .fix.intro, #assetWrap > .fix.end { width: 620px; }
+.fix .intro-gift { width: 72px; height: 72px; animation: giftIdle 2.4s ease-in-out infinite; filter: drop-shadow(0 6px 14px rgba(103, 57, 148, .35)); }
+.intro-body h2 { margin: 0; font: 700 24px/1.15 var(--font-display); color: #401563; text-wrap: balance; max-width: 22ch; }
+.intro-body p { margin: 0; color: #5E4A70; font-size: 16px; } .intro-body p b { color: #2B1340; }
+.intro-how { margin: 4px 0 6px; padding: 12px 16px 12px 34px; text-align: left; background: #FBF7FF; border: 1px solid #EDE1F7; border-radius: 10px; color: #5E4A70; font-size: 13px; display: grid; gap: 4px; }
+.end-reward { display: grid; gap: 4px; padding: 16px; border-radius: 10px; background: linear-gradient(120deg, #401563, #71449E); color: #F4E6FF; }
+.end-big { font: 700 30px/1.1 var(--font-display); color: #FFFFFF; } .end-reward span:last-child { color: #E0B7FF; }
+.end-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.end-cta, .end-again { font: 600 14px/1 var(--font-body); border-radius: 8px; padding: 12px 16px; cursor: pointer; text-decoration: none; border: 1px solid #DCCFE6; background: #fff; color: #2B1340; }
+.end-cta { color: #fff; border: 0; background: #500E82; }
+.end-cta:focus-visible, .end-again:focus-visible { outline: 3px solid #18C4C3; outline-offset: 2px; }
+.fix-clock { margin-left: auto; font: 600 11px/1 var(--font-mono); color: #C4142A; white-space: nowrap; }
+.fix.done .fix-clock { color: #0E8584; }
+/* ---------- fix window: a Bitrise-style web UI card that flies up over the scene, then dives back into the stage ---------- */
+.fix-scrim { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 45%, rgba(26, 6, 44, 0.25), rgba(26, 6, 44, 0.6)); opacity: 0; transition: opacity .5s ease; pointer-events: none; }
+.fix-scrim.on { opacity: 1; }
+.fix { --tx: 0px; --ty: 300px; position: absolute; left: 50%; top: 47%; width: min(620px, calc(100vw - 32px)); max-height: calc(100% - 140px); overflow: auto;
+  background: #FFFFFF; color: #2B1340; border-radius: 14px; box-shadow: 0 30px 80px rgba(20, 4, 36, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.25);
+  font: 14px/1.45 var(--font-body); transform-origin: 50% 50%; opacity: 0; transform: translate(-50%, -50%); }
+.fix.in { animation: fixIn .75s cubic-bezier(.2, .9, .25, 1.12) forwards; }
+.fix.out { animation: fixOut .7s cubic-bezier(.55, 0, .8, .4) forwards; }
+@keyframes fixIn { from { opacity: 0; transform: translate(-50%, 40vh) perspective(1100px) rotateX(48deg) scale(.55); } to { opacity: 1; transform: translate(-50%, -50%) perspective(1100px) rotateX(0) scale(1); } }
+@keyframes fixOut { 0% { opacity: 1; transform: translate(-50%, -50%) perspective(1100px) rotateX(0) scale(1); }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) perspective(1100px) rotateX(55deg) scale(.06); } }
+@media (prefers-reduced-motion: reduce) { .fix.in { animation: fixFade .3s forwards; } .fix.out { animation: fixFade .3s reverse forwards; } @keyframes fixFade { from { opacity: 0; } to { opacity: 1; } } }
+.fix-bar { display: flex; align-items: center; gap: 14px; padding: 9px 14px; background: linear-gradient(90deg, #5B2C88, #7A49AB); color: #fff; border-radius: 14px 14px 0 0; position: sticky; top: 0; z-index: 1; }
+.fix-logo { display: flex; align-items: center; gap: 6px; font: 700 14px/1 var(--font-body); letter-spacing: -0.01em; }
+.fix .fix-logo svg { width: 20px; height: 16px; flex: none; }
+.fix-icons { margin-left: auto; display: flex; gap: 10px; } .fix-icons i { width: 14px; height: 14px; border-radius: 4px; border: 1.6px solid rgba(255,255,255,.75); }
+.fix-icons i:last-child { border-radius: 50%; background: #8DE4FF; border-color: #fff; }
+.fix-app { display: grid; }
+.fix-rail { background: #2A0C45; display: grid; align-content: start; gap: 14px; padding: 12px 0; justify-items: center; border-radius: 0 0 0 14px; }
+.fix-rail i { width: 16px; height: 16px; border-radius: 4px; border: 1.6px solid #9C7BBE; } .fix-rail i.on { border-color: #fff; box-shadow: 0 0 0 6px rgba(255,255,255,.08); }
+.fix-crumb { font-size: 12px; color: #8E5BC2; } .fix-crumb b { font-weight: 500; }
+.fix-titlerow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.fix-titlerow h2 { margin: 0; font: 700 22px/1.2 var(--font-body); color: #24102F; flex: 1; min-width: 0; }
+.fix-ghost { font: 500 12px/1 var(--font-body); color: #2B1340; border: 1px solid #DCCFE6; border-radius: 7px; padding: 7px 10px; background: #fff; }
+.fix-status { border: 1px solid #EDE1F7; border-left: 3px solid #E5243B; border-radius: 8px; padding: 10px 12px; display: grid; gap: 4px; transition: border-color .4s; }
+.fix.done .fix-status { border-left-color: #18C4C3; }
+.fix-status .top { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #6E5A80; }
+.fix-status .st { font: 700 10px/1 var(--font-body); letter-spacing: .06em; padding: 4px 7px; border-radius: 5px; background: #FFE3E6; color: #C4142A; }
+.fix.done .fix-status .st { background: #D9FBF5; color: #0E8584; }
+.fix-status .issue { font-weight: 600; color: #24102F; } .fix-status p { margin: 0; color: #5E4A70; font-size: 13px; max-width: 60ch; }
+.fix-body { padding: 16px 18px 18px; display: grid; gap: 12px; min-width: 0; }
+.fix-head { display: grid; gap: 4px; }
+.fix-tool { justify-self: start; font: 600 11px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: #673994; background: #F4E6FF; padding: 5px 8px; border-radius: 6px; }
+.fix-head h2 { margin: 4px 0 0; font: 700 19px/1.2 var(--font-display); color: #401563; text-wrap: balance; display: flex; align-items: center; gap: 10px; }
+.fix-head h2 .state { font: 600 11px/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; padding: 5px 8px; border-radius: 6px; background: #FFE3E6; color: #C4142A; }
+.fix.done .fix-head h2 .state { background: #D9FBF5; color: #0E8584; }
+.fix-head p { margin: 0; color: #5E4A70; max-width: 60ch; }
+.fix-viz { border: 1px solid #EDE1F7; border-radius: 10px; padding: 12px 14px; background: #FBF7FF; display: grid; gap: 8px; font-size: 13px; }
+.fix-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.fix-steps li { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid #EDE1F7; border-radius: 10px; }
+.fix-steps li > div { flex: 1; min-width: 0; display: grid; }
+.fix-steps li b { font-weight: 600; color: #2B1340; }
+.fix-steps li span { color: #7A6690; font-size: 13px; }
+.fix-steps button { flex: none; font: 600 13px/1 var(--font-body); color: #FFFFFF; background: #500E82; border: 0; border-radius: 8px; padding: 10px 14px; cursor: pointer; }
+.fix-steps button:hover { background: #401563; } .fix-steps button:focus-visible { outline: 3px solid #18C4C3; outline-offset: 2px; }
+.fix-steps li.waiting button { background: #E6D3F7; color: #9A86AD; cursor: default; }
+.fix-steps li.ok { border-color: #A5EDE2; background: #F2FFFC; }
+.fix-steps li.ok button { background: #D9FBF5; color: #0E8584; cursor: default; }
+.fix-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.fix-row .k { color: #7A6690; } .fix-row .v { font: 500 12px var(--font-mono); }
+.pill { font: 600 11px/1 var(--font-mono); padding: 4px 7px; border-radius: 5px; background: #FFE3E6; color: #C4142A; white-space: nowrap; }
+.pill.ok { background: #D9FBF5; color: #0E8584; } .pill.warn { background: #FFF1D6; color: #A35B00; } .pill.mute { background: #EEE8F3; color: #7A6690; }
+.bars { display: grid; gap: 6px; } .bar { display: grid; grid-template-columns: 72px 1fr; align-items: center; gap: 10px; font: 12px var(--font-mono); color: #7A6690; }
+.bar > div { height: 12px; border-radius: 4px; background: #D7ACF9; transition: width .9s cubic-bezier(.2, .8, .2, 1), background .4s; }
+.bar.next > div { background: #FF8A98; } .bar.next.fast > div { background: #18C4C3; }
+.tests { display: grid; grid-template-columns: repeat(12, 1fr); gap: 5px; } .tests i { aspect-ratio: 1; border-radius: 3px; background: #18C4C3; transition: background .4s; }
+.tests i.f { background: #FF3B4A; } .tests i.k { background: #FFB020; } .tests i.q { background: repeating-linear-gradient(45deg, #D9CFE3 0 3px, #EEE8F3 3px 6px); }
+.toggle { width: 42px; height: 24px; border-radius: 12px; background: #C4142A; position: relative; flex: none; transition: background .3s; } .toggle::after { content: ""; position: absolute; top: 3px; left: 21px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: left .3s; }
+.toggle.off { background: #CBBBD9; } .toggle.off::after { left: 3px; }
+.fix svg { display: block; width: 100%; height: auto; }
+/* ---------- brand pass (Generative Design System): TT Norms Pro + IBM Plex Mono, playful gradients, brand palette ---------- */
+@font-face { font-family: "TT Norms Pro"; src: url("fonts/TTNormsPro-Regular.otf") format("opentype"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "TT Norms Pro"; src: url("fonts/TTNormsPro-Medium.otf") format("opentype"); font-weight: 500; font-display: swap; }
+@font-face { font-family: "TT Norms Pro"; src: url("fonts/TTNormsPro-Bold.otf") format("opentype"); font-weight: 700; font-display: swap; }
+.fix { border-radius: 20px; background: linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 55%, #F6EAFF 100%); color: #3D125F; }
+.fix-bar { background: linear-gradient(100deg, #3D125F 0%, #500E82 35%, #6A3C98 70%, #9B6BD1 100%); border-radius: 20px 20px 0 0; padding: 11px 16px; }
+.fix-logo { font-weight: 700; }
+.fix-crumb { color: #6A3C98; font-weight: 500; }
+.fix-titlerow h2 { font: 700 24px/1.15 var(--font-display); color: #3D125F; letter-spacing: -0.01em; }
+.fix-ghost { font-weight: 500; color: #500E82; border: 0; background: #F6EAFF; border-radius: 999px; padding: 7px 12px; }
+.fix-status { border: 0; border-radius: 16px; background: linear-gradient(120deg, #FFF0F4 0%, #FFFFFF 70%); box-shadow: inset 4px 0 0 #E5113C; padding: 12px 14px; }
+.fix.done .fix-status, .fix-status.ok { background: linear-gradient(120deg, #DBFFFD 0%, #FFFFFF 70%); box-shadow: inset 4px 0 0 #10C0C0; }
+.fix-status .st { font: 500 11px/1 var(--font-mono); letter-spacing: .06em; border-radius: 999px; padding: 5px 9px; background: linear-gradient(90deg, #E5113C, #FF6A8E); color: #FFFFFF; }
+.fix.done .fix-status .st { background: linear-gradient(90deg, #10C0C0, #95FFEC); color: #106375; }
+.fix-status .issue { font-weight: 700; color: #3D125F; font-size: 15px; } .fix-status p { color: #6A3C98; }
+.fix-clock { font: 500 11px/1 var(--font-mono); color: #E5113C; }
+.fix-viz { border: 0; border-radius: 16px; background: linear-gradient(135deg, #F6EAFF 0%, #FFFFFF 60%, #DBFFFD 100%); }
+.fix-row .v { font-family: var(--font-mono); }
+.pill { font: 500 11px/1 var(--font-mono); border-radius: 999px; padding: 5px 9px; background: #FFE3EA; color: #E5113C; }
+.pill.ok { background: linear-gradient(90deg, #95FFEC, #DBFFFD); color: #106375; } .pill.warn { background: #FFF4CD; color: #8A5A00; } .pill.mute { background: #F6EAFF; color: #6A3C98; }
+.bar { font-family: var(--font-mono); } .bar > div { border-radius: 999px; background: linear-gradient(90deg, #DEB4FF, #B48AE6); } .bar.next > div { background: linear-gradient(90deg, #FF9CD8, #E5113C); } .bar.next.fast > div { background: linear-gradient(90deg, #95FFEC, #10C0C0); }
+.tests i { border-radius: 6px; background: linear-gradient(135deg, #95FFEC, #10C0C0); } .tests i.f { background: linear-gradient(135deg, #FF9CD8, #E5113C); } .tests i.k { background: linear-gradient(135deg, #FFE27F, #FFC500); }
+.fix-steps li { border: 0; border-radius: 16px; background: #FFFFFF; box-shadow: 0 0 0 1px #EBDDF8, 0 4px 12px rgba(80, 14, 130, .06); padding: 11px 12px 11px 14px; }
+.fix-steps li b { font-weight: 700; color: #3D125F; } .fix-steps li span { color: #6A3C98; }
+.fix-steps li.ok { background: linear-gradient(120deg, #DBFFFD, #FFFFFF); box-shadow: 0 0 0 1px #95FFEC; }
+.fix-steps button { font: 700 14px/1 var(--font-body); border-radius: 12px; padding: 11px 16px; background: #500E82; box-shadow: 0 6px 14px rgba(80, 14, 130, .25); transition: transform .15s, background .15s; }
+.fix-steps button:hover { transform: translateY(-1px) scale(1.03); background: #6A3C98; }
+.fix-steps li.waiting button { background: #F6EAFF; color: #B48AE6; box-shadow: none; }
+.fix-steps li.ok button { background: #95FFEC; color: #106375; box-shadow: none; }
+.toggle { background: #E5113C; } .toggle.off { background: #DBDBDB; }
+/* celebration */
+.celeb { border-radius: 20px; background: linear-gradient(135deg, #FFFFFF 0%, #F6EAFF 60%, #DBFFFD 100%); padding: 16px 18px 16px 18px; overflow: visible; }
+.celeb::after { content: ""; position: absolute; right: -18px; top: -22px; width: 64px; height: 40px; background: url("img/sparkle-star.webp") center / contain no-repeat; transform: rotate(-8deg); animation: starBob 2.2s ease-in-out infinite; }
+@keyframes starBob { 50% { transform: rotate(6deg) translateY(-3px) scale(1.06); } }
+.celeb b { font: 700 24px/1.1 var(--font-display); background: linear-gradient(90deg, #500E82, #6A3C98 60%, #10C0C0); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.celeb span { color: #6A3C98; } .celeb .celeb-tag { font: 500 11px/1 var(--font-mono); border-radius: 999px; padding: 5px 9px; background: linear-gradient(90deg, #10C0C0, #95FFEC); color: #0B3B45; }
+.celeb-pips i { width: 16px; height: 7px; border-radius: 999px; background: #EBDDF8; } .celeb-pips i.on { background: linear-gradient(90deg, #10C0C0, #95FFEC); }
+/* intro */
+.intro-body h2 { font: 700 28px/1.12 var(--font-display); color: #3D125F; letter-spacing: -0.015em; }
+.intro-body p { color: #6A3C98; } .intro-body p b { color: #500E82; font-weight: 700; }
+.intro-how { border: 0; border-radius: 16px; background: linear-gradient(135deg, #F6EAFF, #FFFFFF 70%, #DBFFFD); color: #6A3C98; }
+/* reward */
+.end-reward { position: relative; overflow: visible; border-radius: 20px; padding: 20px 190px 20px 22px; background: linear-gradient(115deg, #3D125F 0%, #500E82 40%, #6A3C98 70%, #10C0C0 135%); }
+.end-reward::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: radial-gradient(circle at 85% 30%, rgba(149, 255, 236, .35), transparent 45%); pointer-events: none; }
+.end-big { font: 700 38px/1 var(--font-display); letter-spacing: -0.02em; background: linear-gradient(90deg, #FFFFFF, #DBFFFD 60%, #95FFEC); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.end-reward span:last-child { color: #DEB4FF; position: relative; }
+.end-cat { position: absolute; right: 6px; bottom: -34px; width: 190px; height: auto; transform: scaleX(-1); filter: drop-shadow(0 10px 16px rgba(20, 4, 36, .35)); pointer-events: none; }   /* side-on PurrCat, flipped to face the Claim button, eyes down, tail wagging (animation lives in the SVG) */
+.end-cta, .end-again { font: 700 15px/1 var(--font-body); border-radius: 12px; padding: 13px 18px; }
+.end-cta { background: #500E82; box-shadow: 0 6px 14px rgba(80, 14, 130, .25); } .end-cta:hover { background: #6A3C98; }
+.end-again { color: #500E82; border-color: #DEB4FF; } .end-cta.end-again { color: #FFFFFF; }
+/* HUD + chip type */
+.hud b, .hud-gift b { font-family: var(--font-mono); font-weight: 500; }
+@media (prefers-reduced-motion: reduce) { .celeb::after, .end-cat { animation: none; } }
+/* HUD v2: white-to-rose base, the mystery box raised above the other indicators */
+.hud { top: 44px; right: 20px; gap: 14px; padding: 8px 20px 8px 8px; border-radius: 20px; background: linear-gradient(100deg, #FFFFFF 0%, #FFF4FA 45%, #FFD0EC 100%); border: 1px solid rgba(255, 255, 255, .9); color: #6A3C98; font-size: 14px;
+  box-shadow: 0 10px 28px rgba(20, 4, 36, .35), inset 0 1px 0 #FFFFFF; backdrop-filter: none; -webkit-backdrop-filter: none; overflow: visible; }
+.hud span { font-weight: 500; } .hud b { color: #3D125F; font: 500 17px var(--font-mono); } .hud .lost b { color: #3D125F; } .hud.hurt .lost b { color: #E5113C; }
+.hud .sep { height: 22px; background: rgba(106, 60, 152, .2); }
+.hud-stat { display: flex; align-items: center; gap: 6px; } .hud-ico { width: 24px; height: 24px; flex: none; filter: drop-shadow(0 2px 3px rgba(80, 14, 130, .25)); }
+.hud-lbl { font-size: 13px; color: #6A3C98; } .hud.hurt .lost .hud-ico { animation: flick 0.9s ease-in-out infinite alternate; transform-origin: 50% 90%; }
+@keyframes flick { from { transform: scale(1) rotate(-3deg); } to { transform: scale(1.12, 1.18) rotate(3deg); } }
+@media (prefers-reduced-motion: reduce) { .hud.hurt .lost .hud-ico { animation: none; } }
+.hud-gift { gap: 10px; align-self: stretch; padding: 6px 18px 6px 12px; margin: -16px 0 -9px -9px; border-radius: 20px 20px 20px 20px; background: #000000; box-shadow: 0 10px 20px rgba(80, 14, 130, .35), 0 0 0 3px #FFFFFF; }   /* bottom and left edges flush with the pill: one connected piece, raised only at the top */
+.hud-gift svg { width: 56px; height: 56px; margin-top: -22px; filter: drop-shadow(0 6px 8px rgba(20, 4, 36, .45)) drop-shadow(0 0 calc(4px + 12px * var(--fill)) rgba(149, 255, 236, calc(.3 + .6 * var(--fill)))); }
+.gift-txt { display: grid; gap: 2px; line-height: 1; } .gift-txt small { font: 500 10px/1 var(--font-body); letter-spacing: .08em; text-transform: uppercase; color: #DEB4FF; }
+.hud-gift b { font: 500 20px/1 var(--font-mono); color: #FFFFFF; }
+.hud-gift + .sep { display: none; }
+.celeb { top: 104px; }
+@media (max-width: 560px) { .hud { padding: 6px 14px 6px 6px; gap: 10px; } .hud-gift svg { width: 44px; height: 44px; } }
+/* intro: Bitbot and PurrCat are part of the background, coming in from both sides and cropped by the card frame */
+.intro-body { position: relative; overflow: hidden; border-radius: 0 0 20px 20px; }
+.intro-body > :not(.intro-bg) { position: relative; z-index: 1; }
+.intro-bg { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
+.intro-pal { position: absolute; bottom: -24px; height: auto; opacity: .8; }   /* 80% opacity, static */
+.intro-bot { left: -56px; bottom: 40px; width: 240px; }
+.intro-cat { right: -48px; bottom: -14px; width: 230px; }   /* already flying in toward the card */
+@media (max-width: 760px) { .intro-bot { left: -70px; width: 140px; bottom: 60px; } .intro-cat { right: -80px; width: 150px; } }
+/* a lost app: the flame flares up and the bar pulses red */
+.hud.burn { animation: hudBurn .8s ease-out; }
+@keyframes hudBurn { 0% { background: linear-gradient(100deg, #FFFFFF, #FFF4FA 45%, #FFD0EC); } 25% { background: linear-gradient(100deg, #FFD0EC, #FF9CD8 45%, #E5113C); box-shadow: 0 0 0 4px rgba(229, 17, 60, .35), 0 10px 28px rgba(229, 17, 60, .45); } 100% { background: linear-gradient(100deg, #FFFFFF, #FFF4FA 45%, #FFD0EC); } }
+.hud.burn .lost .hud-ico { animation: flameUp .8s cubic-bezier(.2, 1.6, .4, 1); }
+@keyframes flameUp { 0% { transform: scale(1); } 30% { transform: scale(1.7, 2.1) translateY(-4px); filter: drop-shadow(0 0 10px #FF4400) brightness(1.2); } 100% { transform: scale(1); } }
+.hud.burn .lost b { animation: lostPop .8s ease-out; } @keyframes lostPop { 30% { transform: scale(1.35); color: #FFFFFF; } }
+.hud.burn .lost .hud-lbl { animation: lblWhite .8s ease-out; } @keyframes lblWhite { 30% { color: #FFFFFF; } }   /* keep contrast while the bar is red */
+@media (prefers-reduced-motion: reduce) { .hud.burn, .hud.burn .lost .hud-ico, .hud.burn .lost b { animation: none; } }
+/* intro: the Start button breathes a soft blue glow, like Bitbot's thruster blast (solid colour, no gradient, no scaling) */
+#introGo, .end .end-actions a.end-cta { animation: goGlow 2.4s ease-in-out infinite; }
+@keyframes goGlow { 0%, 100% { box-shadow: 0 6px 14px rgba(80, 14, 130, .25), 0 0 0 0 rgba(136, 227, 255, 0); } 50% { box-shadow: 0 6px 14px rgba(80, 14, 130, .25), 0 0 22px 6px rgba(136, 227, 255, .75); } }
+@media (prefers-reduced-motion: reduce) { #introGo, .end .end-actions a.end-cta { animation: none; } }
+/* congrats: pops in the middle of the screen with a brand confetti burst */
+.celeb { top: 50%; left: 50%; right: auto; width: min(360px, calc(100vw - 32px)); text-align: center; justify-items: center; padding: 22px 24px 20px;
+  transform: translate(-50%, -50%) scale(.6); opacity: 0; transition: opacity .3s ease, transform .55s cubic-bezier(.2, 1.6, .4, 1); z-index: 4; }
+.celeb.show { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+.celeb b { font-size: 32px; } .celeb-top { width: 100%; justify-content: center; flex-direction: column; gap: 10px; }
+.celeb::after { right: -24px; top: -28px; width: 84px; height: 54px; }
+.confetti.cf-star { width: 14px; height: 14px; border-radius: 0; clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); }
+.confetti.cf-tile { width: 11px; height: 11px; border-radius: 3px; } .confetti.cf-strip { width: 6px; height: 14px; border-radius: 3px; }
+@media (max-width: 560px) { .celeb { top: 50%; bottom: auto; right: auto; transform: translate(-50%, -50%) scale(.6); } .celeb.show { transform: translate(-50%, -50%) scale(1); } }
+/* mystery box: brand isometric box (CP_BITRISE_BOX_BUNDLE_01), no glow, static; energised on every fix */
+.hud-gift .box { width: 58px; height: 58px; object-fit: contain; margin-top: -24px; transform-origin: 50% 90%;
+  filter: drop-shadow(0 8px 6px rgba(0, 0, 0, .45)); }
+.hud-gift.wiggle .box { animation: boxCharge 1.1s cubic-bezier(.2, 1.4, .4, 1); }
+@keyframes boxCharge { 0% { transform: translateY(0) scale(1); }
+  20% { transform: translateY(-14px) scale(1.3) rotate(-8deg); filter: drop-shadow(0 14px 8px rgba(0,0,0,.4)); }
+  40% { transform: translateY(-12px) scale(1.25) rotate(7deg); } 60% { transform: translateY(-10px) scale(1.2) rotate(-4deg); filter: drop-shadow(0 10px 8px rgba(0,0,0,.4)); }
+  100% { transform: translateY(0) scale(1) rotate(0); } }
+.hud-gift.open .box { animation: boxOpen 1s cubic-bezier(.2, 1.6, .4, 1) forwards; }
+@keyframes boxOpen { 0% { transform: scale(1); } 40% { transform: translateY(-18px) scale(1.5) rotate(10deg); } 100% { transform: translateY(-6px) scale(1.2); } }
+
+.fix .intro-gift { width: 96px; height: 96px; object-fit: contain; filter: drop-shadow(0 10px 10px rgba(61, 18, 95, .3)); }
+@media (prefers-reduced-motion: reduce) { .hud-gift .box, .hud-gift.wiggle .box { animation: none; } }
+</style>
+
+</head>
+<body>
+<div class="stage" id="stage">
+  <canvas id="view" aria-label="Interactive 3D CI/CD pipeline with Bitbot"></canvas>
+  <div class="chip" id="chip" data-state="running" role="status" aria-live="polite"><span class="dot"></span><span id="chipText">Pipeline running</span></div>
+  <div class="hud" id="hud" role="status" aria-live="off"><span class="hud-gift" id="hudGift" style="--fill:0" aria-label="Surprise reward progress"><img class="box" src="img/mystery-box.webp" alt=""><span class="gift-txt"><small>Unlock</small><b id="giftCount">0/5</b></span></span><span class="sep"></span><span class="hud-stat"><svg class="hud-ico" viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="icHeart" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFD0EC"/><stop offset=".45" stop-color="#FF9CD8"/><stop offset="1" stop-color="#E5113C"/></linearGradient></defs><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 2.9 4.5 6.6 4.5c2.1 0 3.9 1.2 5.4 3.2 1.5-2 3.3-3.2 5.4-3.2 3.7 0 5.7 3.9 4.2 7.3C19.5 16.4 12 21 12 21z" fill="url(#icHeart)"/><path d="M7 7.6c-1.5.3-2.4 1.6-2.2 3.2" fill="none" stroke="#FFFFFF" stroke-opacity=".8" stroke-width="1.6" stroke-linecap="round"/></svg><span class="hud-lbl">Alive</span><b id="hudAlive">60</b></span><span class="sep"></span><span class="hud-stat lost"><svg class="hud-ico" viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="icFlame" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#FF4400"/><stop offset=".6" stop-color="#FFA17F"/><stop offset="1" stop-color="#FFE27F"/></linearGradient><linearGradient id="icCore" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#FFC500"/><stop offset="1" stop-color="#FFF4CD"/></linearGradient></defs><path d="M12 22c-4.4 0-7.5-3-7.5-7 0-3.4 2.3-5.3 3.4-8.2.3 1.7 1.1 2.9 2.2 3.6C10 6.6 11.6 3.8 14.6 2c-.6 3 .6 5.2 2.3 7.2 1.6 1.8 2.6 3.5 2.6 5.8 0 4-3.1 7-7.5 7z" fill="url(#icFlame)"/><path d="M12 21c-2 0-3.5-1.4-3.5-3.4 0-1.9 1.4-2.9 2.1-4.6.7 1 1.5 1.5 2.4 1.7 0-1.5.5-2.6 1.4-3.5 0 2 1.1 3.2 1.1 5.6 0 2.4-1.5 4.2-3.5 4.2z" fill="url(#icCore)"/></svg><span class="hud-lbl">Lost</span><b id="hudLost">0</b></span></div>
+  <div class="doom" id="doom" hidden aria-hidden="true"><svg viewBox="0 0 100 100" aria-hidden="true">
+    <defs><linearGradient id="dmBezel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7E4CB4"/><stop offset="1" stop-color="#3D125F"/></linearGradient>
+      <linearGradient id="dmFace" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F6EEFF"/><stop offset="1" stop-color="#DCC4F8"/></linearGradient>
+      <linearGradient id="dmSlice" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#FF4400"/><stop offset="1" stop-color="#FFA17F"/></linearGradient>
+      <linearGradient id="dmWarn" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFF4CD"/><stop offset=".45" stop-color="#FFE27F"/><stop offset="1" stop-color="#FFC500"/></linearGradient></defs>
+    <g class="cd"><circle cx="50" cy="50" r="47" fill="url(#dmBezel)"/><circle cx="50" cy="50" r="38" fill="url(#dmFace)"/>
+      <path id="doomSlice" fill="url(#dmSlice)" d=""/>
+      <g id="doomHand"><path d="M48 50 L50 17 L52 50 Z" fill="#500E82" stroke="#500E82" stroke-width="3" stroke-linejoin="round"/></g>
+      <circle cx="50" cy="50" r="15" fill="#500E82"/><text id="doomN" x="50" y="56.5" text-anchor="middle">5</text></g>
+    <g class="wn"><circle cx="50" cy="50" r="47" fill="url(#dmWarn)"/><circle cx="50" cy="50" r="40" fill="none" stroke="#FFFFFF" stroke-opacity=".55" stroke-width="3"/>
+      <rect x="44" y="20" width="12" height="40" rx="6" fill="#000000"/><circle cx="50" cy="73" r="7" fill="#000000"/></g>
+  </svg></div>
+  <div class="celeb" id="celeb" hidden role="status" aria-live="polite"></div>
+  <div class="fix-scrim" id="fixScrim"></div>
+  <section class="fix" id="fix" role="dialog" aria-labelledby="fixTitle" hidden></section>
+  <section class="fix end" id="endCard" role="dialog" aria-labelledby="endTitle" hidden></section>
+  <section class="fix intro" id="introCard" role="dialog" aria-labelledby="introTitle" hidden>
+    <div class="fix-bar"><span class="fix-logo"><svg viewBox="0 0 20 16" aria-hidden="true"><rect x="1" y="3" width="18" height="12" rx="4" fill="none" stroke="#fff" stroke-width="1.8"/><path d="M10 0v3" stroke="#fff" stroke-width="1.8"/><circle cx="7" cy="9" r="1.2" fill="#fff"/><circle cx="13" cy="9" r="1.2" fill="#fff"/></svg>bitrise</span></div>
+    <div class="fix-body intro-body"><div class="intro-bg" aria-hidden="true"><img class="intro-pal intro-bot" src="img/bitbot-flying.webp" alt=""><img class="intro-pal intro-cat" src="img/purrcat-flying.webp" alt=""></div>
+      <img class="intro-gift" src="img/mystery-box.webp" alt="">
+      <h2 id="introTitle">Save your apps from failing with Bitbot</h2>
+      <p>Get <b>5 fixes</b> right to win the <b>mystery box</b>.</p>
+      <ol class="intro-how"><li>A stage gets stuck and apps start piling up.</li><li>Click it to send Bitbot.</li><li>Fix it in the window before your apps burn.</li></ol>
+      <button type="button" class="end-cta" id="introGo">Start saving apps</button>
+    </div>
+  </section>
+  <div class="status" id="status">Loading the pipeline&hellip;</div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
+
+const STAGES = ["PLAN", "CODE", "BUILD", "TEST", "RELEASE", "DEPLOY", "OPERATE", "MONITOR"];
+const NICE = s => s.charAt(0) + s.slice(1).toLowerCase();
+const canvas = document.getElementById("view"), stageEl = document.getElementById("stage");
+const chip = document.getElementById("chip"), chipText = document.getElementById("chipText"), statusEl = document.getElementById("status");
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// ---------- renderer, scene, camera ----------
+let renderer;
+try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true }); }
+catch (e) { statusEl.textContent = "This browser could not start WebGL, so the 3D scene is unavailable."; throw e; }
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setClearColor(0x000000, 0);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.NoToneMapping;   // brand art style: colours land exactly on their hex values
+renderer.shadowMap.enabled = false;   // the brand art has no cast shadows
+const scene = new THREE.Scene();
+scene.background = new THREE.Color("#401563");   // brand Dark Purple
+const camera = new THREE.PerspectiveCamera(10, 1, 1, 600);
+const TARGET = new THREE.Vector3(0.4, 0, -0.2);
+const CAM_POS = new THREE.Vector3(-0.674, 34.9, 37.92);
+camera.position.copy(CAM_POS); camera.lookAt(TARGET);
+
+// space lighting: warm distant star, purple nebula rim, cold fill
+// soft pastel lighting like the brand illustrations: white sky, purple bounce from below, a gentle key and a lilac rim
+scene.add(new THREE.HemisphereLight(0xFFFFFF, 0x8E5FCC, 1.9));
+const key = new THREE.DirectionalLight(0xFFFFFF, 1.0); key.position.set(-4, 14, 10); key.castShadow = false;
+key.shadow.mapSize.set(2048, 2048); Object.assign(key.shadow.camera, { left: -9, right: 9, top: 9, bottom: -9, near: 1, far: 50 });
+key.shadow.bias = -0.0005; key.shadow.normalBias = 0.02; scene.add(key);
+const rim = new THREE.DirectionalLight(0xc79bff, 0.7); rim.position.set(7, 6, -11); scene.add(rim);
+const fill = new THREE.DirectionalLight(0x8db3ff, 0.0); fill.position.set(8, 4, 9); scene.add(fill);
+
+// starfield
+let starField;
+{
+  const n = 2600, pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const u = Math.random() * 2 - 1, th = Math.random() * Math.PI * 2, r = 220 + Math.random() * 120, s = Math.sqrt(1 - u * u);
+    pos.set([r * s * Math.cos(th), r * u, r * s * Math.sin(th)], i * 3);
+    const t = Math.random(); col.set([0.75 + 0.25 * t, 0.75 + 0.15 * t, 1.0], i * 3);
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pos, 3)); g.setAttribute("color", new THREE.BufferAttribute(col, 3));
+  starField = new THREE.Points(g, new THREE.PointsMaterial({ size: 0.8, vertexColors: true, sizeAttenuation: true, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending }));
+  // stars removed: solid brand purple only
+}
+
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.45, 0.5, 0.98);   // only real light sources glow (screen, fire, heal) composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+// ---------- load the two models (shipped as base64 text) ----------
+async function loadGLB(url) {
+  const r = await fetch(url); if (!r.ok) throw new Error(url + " " + r.status);
+  const bin = atob((await r.text()).replace(/\s+/g, "")); const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Promise((res, rej) => new GLTFLoader().parse(bytes.buffer, "", res, rej));
+}
+
+// Bitrise brand palette (from the brand library)
+const RED = new THREE.Color("#FF4A08").lerp(new THREE.Color("#FF2D55"), 0.55);
+const LIT = new THREE.Color("#E9FDFF"), MINT = new THREE.Color("#99FFED");
+const _c2s = new THREE.Color();
+const BRAND_TOP = "#F4EAFF", BRAND_SIDE = "#B48AE6", BRAND_ARROW = "#E6D3FA", BRAND_LABEL = "#4A4258";   // from the Bitrise loop illustration
+const PURPLE = new THREE.Color("#B06CFF"), PURPLE_DEEP = new THREE.Color("#673994");
+const BRAND = ["#8DE4FF", "#99FFED", "#E0B7FF", "#D7ACF9", "#80DBFB", "#8CFBE9"].map(c => new THREE.Color(c));
+let track, trackRoot, bot, mixer, actions = {}, currentAction = null;
+const stages = [], arrows = [], beams = [];
+const loop = [];                      // 16 waypoints (stage, arrow, stage, arrow...) at flying height
+let trackCenter = new THREE.Vector3(), trackRadius = 8;
+
+Promise.all([loadGLB("cicd_track.glb.txt"), loadGLB("bitbot_hero.glb.txt")]).then(([tg, bg]) => {
+  track = tg.scene; trackRoot = new THREE.Group(); trackRoot.add(track); scene.add(trackRoot); track.updateMatrixWorld(true);
+  track.traverse(o => {
+    if (!o.isMesh || !o.material || !o.material.isMeshStandardMaterial) return;
+    const m = o.material, nm = m.name || "", on = (o.name + " " + (o.parent ? o.parent.name : ""));
+    m.roughness = 1; m.metalness = 0; m.envMapIntensity = 0;
+    if (nm.startsWith("CICD_TrackTop")) m.color.set(BRAND_TOP);
+    else if (nm.startsWith("CICD_TrackSide")) m.color.set(BRAND_SIDE);
+    else if (on.includes("ARW_")) m.color.set(BRAND_ARROW);
+    else if (on.includes("LBL_")) m.color.set(BRAND_LABEL);
+    else m.color.set(BRAND_SIDE);
+  });
+  const byName = n => track.getObjectByName(n);
+  const center = o => new THREE.Box3().setFromObject(o).getCenter(new THREE.Vector3());
+  for (let i = 1; i <= 4; i++) { const c = byName("CUBE_" + i); if (c) c.visible = false; }
+  STAGES.forEach((s, i) => {
+    const group = byName("TRK_" + s), label = byName("LBL_" + s);
+    let top = null, side = null;
+    group.traverse(o => {
+      if (!o.isMesh) return;
+      if (o.material.name.startsWith("CICD_TrackTop")) { o.material = o.material.clone(); top = o.material; }
+      if (o.material.name.startsWith("CICD_TrackSide")) { o.material = o.material.clone(); side = o.material; }
+    });
+    label.material = label.material.clone(); label.material.emissive = new THREE.Color(0, 0, 0);
+    const c = center(label);
+    stages.push({ name: s, group, top, side, label, center: c, hover: c.clone().add(new THREE.Vector3(0, 1.75, 0)).add(new THREE.Vector3(CAM_POS.x - c.x, 0, CAM_POS.z - c.z).normalize().multiplyScalar(-1.5)),   // beyond the stage: he blasts toward us, front on
+      baseColor: top.color.clone(), sideColor: side ? side.color.clone() : null, labelColor: label.material.color.clone(), red: 0, heal: 0, glow: 0 });
+    const a = byName(`ARW_${s}_${STAGES[(i + 1) % 8]}`); a.material = a.material.clone();
+    a.material.emissive = new THREE.Color(0, 0, 0); a.material.emissiveIntensity = 1;
+    arrows.push({ mesh: a, mat: a.material, center: center(a), base: a.material.color.clone() });
+  });
+  STAGES.forEach((s, i) => { loop.push(stages[i].center.clone().add(new THREE.Vector3(0, 1.2, 0))); loop.push(arrows[i].center.clone().add(new THREE.Vector3(0, 1.2, 0))); });
+  const box = new THREE.Box3(); stages.forEach(st => box.expandByObject(st.group)); box.getCenter(trackCenter);
+  trackRadius = Math.max(box.max.x - box.min.x, box.max.z - box.min.z) / 2;
+  const planet = byName("SPC_Planet"); if (planet) planet.visible = false; if (false && planet) planet.traverse(o => { if (o.isMesh) { o.material.emissiveIntensity = 0.25; o.castShadow = false; o.receiveShadow = false; } });
+  const ring = byName("SPC_PlanetRing"); if (ring) ring.visible = false; if (false && ring) ring.traverse(o => { if (o.isMesh) { o.material.transparent = true; o.material.depthWrite = false; o.material.side = THREE.DoubleSide; } });
+
+  bot = bg.scene; bot.scale.setScalar(1.3); scene.add(bot);
+  bot.traverse(o => {
+    if (!o.isMesh) return;
+    if (o.material && o.material.isMeshStandardMaterial) { o.material.roughness = Math.max(0.8, o.material.roughness); o.material.metalness = 0; o.material.envMapIntensity = 0; }
+    if (o.name.startsWith("BB_Screen") && o.material.isMeshStandardMaterial) { o.material = o.material.clone(); o.material.color.set("#0B2A2C"); o.material.emissive.set("#0F4744"); o.material.emissiveIntensity = 1; }   // dark teal glass, glowing softly
+    o.castShadow = true;
+    if (o.material.name.includes("ThrusterBeam")) {
+      o.geometry.computeBoundingBox(); const bb = o.geometry.boundingBox;
+      o.material = new THREE.ShaderMaterial({
+        transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+        uniforms: { time: { value: 0 }, top: { value: bb.max.y }, bottom: { value: bb.min.y }, power: { value: 0.5 }, seed: { value: Math.random() * 10 } },
+        vertexShader: `varying float vT; varying vec3 vN; varying vec3 vV; varying vec3 vP; uniform float top, bottom;
+          void main(){ vT = clamp((top - position.y) / (top - bottom), 0.0, 1.0); vP = position;
+            vec4 mv = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz);
+            gl_Position = projectionMatrix * mv; }`,
+        fragmentShader: `varying float vT; varying vec3 vN; varying vec3 vV; varying vec3 vP; uniform float time, power, seed;
+          float h(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+          float n(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f);
+            return mix(mix(h(i), h(i+vec2(1,0)), f.x), mix(h(i+vec2(0,1)), h(i+vec2(1,1)), f.x), f.y); }
+          void main(){
+            float a = atan(vP.x, vP.z);
+            float flow = n(vec2(a * 2.5, vT * 7.0 - time * 9.0 + seed)) * 0.6 + n(vec2(a * 5.0, vT * 15.0 - time * 16.0)) * 0.4;
+            float len = 0.45 + power * 0.55;                              // flame length grows with thrust
+            float fade = smoothstep(len, len * 0.25, vT) * (0.6 + 0.6 * flow);
+            float rim = pow(abs(dot(vN, vV)), 1.6);                       // soft edges
+            vec3 core = vec3(1.0, 1.0, 1.0), mid = vec3(0.55, 0.95, 1.0), tail = vec3(0.62, 0.38, 1.0);
+            vec3 col = mix(core, mid, smoothstep(0.0, 0.25, vT)); col = mix(col, tail, smoothstep(0.25, 0.75, vT));
+            gl_FragColor = vec4(col * fade * rim * (0.7 + power), 1.0);
+          }` });
+      o.castShadow = false; beams.push(o.material);
+    }
+  });
+  mixer = new THREE.AnimationMixer(bot);
+  for (const clip of bg.animations) actions[clip.name] = mixer.clipAction(clip);
+  bot.traverse(o => { if (o.isBone && o.name === "head") headBone = o; });
+  handBones = ["hand.L", "hand.R"].map(n => bot.getObjectByName(n)); foreBones = ["forearm.L", "forearm.R"].map(n => bot.getObjectByName(n));
+  // mouth pivots on its own centre so it can flip from a smile to a frown
+  bot.traverse(o => {
+    if (o.isMesh && o.name.startsWith("BB_Mouth")) {
+      o.geometry.computeBoundingBox(); const c = o.geometry.boundingBox.getCenter(new THREE.Vector3());
+      o.geometry.translate(-c.x, -c.y, -c.z); o.position.add(c.clone().multiply(o.scale).applyQuaternion(o.quaternion)); mouth = o; mouthScaleY = o.scale.y;
+    }
+  });
+  statusEl.hidden = true; resize(); camera.updateMatrixWorld(true); buildParticles(); buildPackages(); setChip("running", `Fix ${STUCKABLE.length} stuck stages to unlock a surprise`);
+  const h0 = homePose("camera"); bot.position.copy(h0.pos); yaw = h0.yaw; play("Idle");
+  if (ASSET) { renderAsset(ASSET); return; }
+  if (SIM || location.hash === "#demo") scheduleFailure(3);
+  else showIntro();   // the game starts when the player presses Start
+  const q = new URLSearchParams(location.search); if (q.get("sim")) { try { window.__simulate(+q.get("sim"), +q.get("clickat") || 0); if (q.get("dbg")) document.body.setAttribute("data-dbg", JSON.stringify(window.__dbg())); if (q.has("end")) { showEnd(q.get("end") !== "lose"); endEl.style.animationDuration = "1ms"; } } catch (e) { document.body.setAttribute("data-err", e.message + " | " + (e.stack || "").split("\n").slice(0, 3).join(" / ")); } }
+}).catch(() => { statusEl.textContent = "The 3D files could not be loaded. Reload the page to try again."; });
+
+function play(name, fade = 0.35) {
+  const a = actions[name]; if (!a || a === currentAction) return;
+  a.reset().setLoop(THREE.LoopRepeat, Infinity).fadeIn(fade).play();
+  if (currentAction) currentAction.fadeOut(fade);
+  currentAction = a;
+}
+
+// ---------- soft brand-coloured particles floating around the loop ----------
+let particles, partData = [];
+function buildParticles() {
+  // translucent rounded lilac tiles, like the Bitrise CI/CD art
+  const shape = new THREE.Shape(), w = 1, r = 0.28;
+  shape.moveTo(-w + r, -w); shape.lineTo(w - r, -w); shape.quadraticCurveTo(w, -w, w, -w + r); shape.lineTo(w, w - r);
+  shape.quadraticCurveTo(w, w, w - r, w); shape.lineTo(-w + r, w); shape.quadraticCurveTo(-w, w, -w, w - r); shape.lineTo(-w, -w + r); shape.quadraticCurveTo(-w, -w, -w + r, -w);
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.12, bevelEnabled: true, bevelThickness: 0.06, bevelSize: 0.06, bevelSegments: 3 });
+  geo.center();
+  const mat = new THREE.MeshStandardMaterial({ color: "#B88AE6", emissive: "#6A3C98", emissiveIntensity: 0.35, roughness: 0.5, transparent: true, opacity: 0.42, depthWrite: false });
+  const spots = [[-0.78, 0.5, 0.42], [-0.62, 0.56, 0.36], [-0.74, -0.52, 0.6], [0.76, 0.64, 0.62], [0.86, -0.42, 0.34]];
+  spots.forEach(([nx, ny, sc]) => {
+    const m = new THREE.Mesh(geo, mat); const dir = new THREE.Vector3(nx, ny, 0.5).unproject(camera).sub(camera.position).normalize();
+    m.position.copy(camera.position).addScaledVector(dir, 46 + Math.random() * 14); m.scale.setScalar(sc * 0.8);
+    m.rotation.set(-0.9, 0, Math.PI / 4 + (Math.random() - 0.5) * 0.4); m.renderOrder = -1; scene.add(m);
+    partData.push({ m, base: m.position.clone(), rz: m.rotation.z, ph: Math.random() * 6.28, sp: 0.25 + Math.random() * 0.3 });
+  });
+  particles = true;
+}
+
+// ---------- package stream along the track surface, with a gate in front of a stuck stage ----------
+let pkgCurve = null, pkgMesh = null, gateMesh = null, pkgs = [], releaseBoost = 0, shardMesh = null, shards = [];
+const FIRE_A = new THREE.Color("#FF4A08"), FIRE_B = new THREE.Color("#FFC24D"), FIRE_C = new THREE.Color();
+const SHARD_N = 220, _zero = new THREE.Matrix4().makeScale(0, 0, 0), RED_C = new THREE.Color("#FF3B4A");
+// keep-the-apps-alive: 10 s countdown once a stage is stuck; after 5 s one queued app is lost every second until the fix is done
+const DOOM_GRACE = 5;   // countdown over the stuck stage; after it, one app per second burns up until the fix window opens
+let doom = { on: false, t: 0, next: 0, lost: 0 }, pileCount = 0;   // apps currently stopped at the gate
+const fixedStages = new Set();   // a run = every stuckable stage fixed once
+const STUCKABLE = [1, 2, 3, 4, 5];   // Code, Build, Test, Release, Deploy. Plan, Operate and Monitor never get stuck
+function doomActive() { return doom.on && stuck >= 0 && state !== "healing" && !(fix && fix.ready); }
+function timeFrozen() { return !!(fix && fix.open && !fix.ready); }   // the fix window freezes the clock: no apps are lost while you fix
+function killApp(q, _p, _lat) {
+  const r = Math.random(), type = r < 0.7 ? "boom" : r < 0.85 ? "left" : "right";   // mostly burn up and blow, the odd one falls off
+  q.die = { type, t: 0, p: _p.clone(), v: new THREE.Vector3(), r: new THREE.Vector3() };
+  if (type !== "boom") { const sd = type === "left" ? 1 : -1; q.die.v.copy(_lat).multiplyScalar(sd * (1.4 + Math.random() * 0.6)); q.die.v.y = 0.9; q.die.r.set(Math.random() * 6 - 3, Math.random() * 4 - 2, sd * (5 + Math.random() * 3)); }
+  doom.lost++; updateHud();
+  hudEl.classList.remove("burn"); void hudEl.offsetWidth; hudEl.classList.add("burn");   // flame flares, bar pulses red
+}
+const hudEl = document.getElementById("hud"), doomEl = document.getElementById("doom"), doomSlice = document.getElementById("doomSlice"), doomHand = document.getElementById("doomHand"), doomN = document.getElementById("doomN");
+function setStopwatch(frac, t) {   // frac = time left (1..0): the orange slice shrinks, the hand follows its edge, the number counts down
+  const a = Math.max(0, Math.min(1, frac)) * Math.PI * 2, r = 38, cx = 50, cy = 50, x = cx + Math.sin(a) * r, y = cy - Math.cos(a) * r;
+  doomSlice.setAttribute("d", frac <= 0 ? "" : frac >= 1 ? `M${cx} ${cy - r}A${r} ${r} 0 1 1 ${cx - 0.01} ${cy - r}Z` : `M${cx} ${cy}L${cx} ${cy - r}A${r} ${r} 0 ${a > Math.PI ? 1 : 0} 1 ${x.toFixed(2)} ${y.toFixed(2)}Z`);
+  doomHand.setAttribute("transform", `rotate(${(a * 180 / Math.PI).toFixed(1)} ${cx} ${cy})`);
+  doomN.textContent = Math.max(1, Math.ceil(frac * DOOM_GRACE));
+}
+function updateHud() {
+  const alive = pkgs.filter(q => !q.dead && !q.die).length;
+  document.getElementById("hudAlive").textContent = alive; document.getElementById("hudLost").textContent = doom.lost; document.getElementById("giftCount").textContent = `${fixedStages.size}/${STUCKABLE.length}`;
+  if (alive === 0 && !endShown) { endShown = true; setTimeout(() => showEnd(false), 1500); }
+  hudEl.classList.toggle("hurt", doom.lost > 0);
+}
+function updateDoomBadge() {
+  if (ASSET) return;   // asset export renders the badge by hand
+  const show = doom.on && stuck >= 0 && doomActive() && !timeFrozen();   // no badge while the fix window is open
+  doomEl.hidden = !show; const fc = document.getElementById("fixClock");
+  if (!show) { if (fc && timeFrozen()) fc.textContent = `\u23F8 time frozen \u00B7 ${doom.lost} lost`; else if (fc && fix && fix.ready) fc.textContent = "apps safe"; return; }
+  const rem = DOOM_GRACE - doom.t, p = stages[stuck].center.clone().add(new THREE.Vector3(0, 1.1, 0)).applyMatrix4(trackRoot.matrixWorld).project(camera);
+  doomEl.style.left = `${(p.x * 0.5 + 0.5) * canvas.clientWidth}px`; doomEl.style.top = `${(0.5 - p.y * 0.5) * canvas.clientHeight}px`;   // left/top, so the pulse animation can own transform
+  setStopwatch(rem / DOOM_GRACE, doom.t);
+  doomEl.classList.toggle("urgent", rem <= 0 && !timeFrozen());
+  if (fc && timeFrozen()) { fc.textContent = `\u23F8 time frozen \u00B7 ${doom.lost} lost`; return; }
+  if (fc) fc.textContent = rem > 0 ? `\u23F1 ${Math.ceil(rem)}s \u00B7 ${doom.lost} lost` : `apps crashing \u00B7 ${doom.lost} lost`;
+}
+function ember(p) {
+  const sh = shards.find(x => x.life <= 0); if (!sh) return;
+  sh.life = 0.45 + Math.random() * 0.3; sh.p.copy(p).add(new THREE.Vector3((Math.random() - 0.5) * 0.12, 0.08, (Math.random() - 0.5) * 0.12)); sh.v.set((Math.random() - 0.5) * 0.4, 1.4 + Math.random() * 0.6, (Math.random() - 0.5) * 0.4);
+}
+// ---------- end of a run: every stuckable stage fixed (reward) or every app lost ----------
+const endEl = document.getElementById("endCard"); let endShown = false;
+function showEnd(won, gold) {
+  endShown = true; const alive = pkgs.filter(q => !q.dead && !q.die).length;
+  endEl.innerHTML = `<div class="fix-bar"><span class="fix-logo"><svg viewBox="0 0 20 16" aria-hidden="true"><rect x="1" y="3" width="18" height="12" rx="4" fill="none" stroke="#fff" stroke-width="1.8"/><path d="M10 0v3" stroke="#fff" stroke-width="1.8"/><circle cx="7" cy="9" r="1.2" fill="#fff"/><circle cx="13" cy="9" r="1.2" fill="#fff"/></svg>bitrise</span></div>
+    <div class="fix-body">${won
+      ? `<div class="fix-crumb"><b>Bitbot On Call</b> &nbsp;&rsaquo;&nbsp; <b>Run complete</b></div>
+         <div class="fix-titlerow"><h2 id="endTitle">Pipeline fully healed</h2></div>
+         <div class="fix-status ok"><div class="issue">All ${STUCKABLE.length} stages fixed &middot; ${alive} of ${PKG_N} apps kept alive</div><p>Every stuck stage was fixed with Bitrise. Here's something for your own pipeline.</p></div>
+         <div class="end-reward"><img class="end-cat" src="img/purrcat-side.svg" alt=""><span class="end-big">15 days free</span><span>${gold ? "Gold run: 40+ apps kept alive. " : ""}Full access to every Bitrise product. Your reward for keeping the loop alive.</span></div>
+         <div class="end-actions"><a class="end-cta" href="claim/">Claim 15 days free</a><button type="button" class="end-again">Play again</button></div>`
+      : `<div class="fix-crumb"><b>Bitbot On Call</b> &nbsp;&rsaquo;&nbsp; <b>Run over</b></div>
+         <div class="fix-titlerow"><h2 id="endTitle">All apps lost</h2></div>
+         <div class="fix-status"><div class="issue">${fixedStages.size} of ${STUCKABLE.length} stages fixed</div><p>The pile-ups burned every app. Fix stuck stages faster to keep them alive.</p></div>
+         <div class="end-actions"><button type="button" class="end-again end-cta">Play again</button></div>`}</div>`;
+  endEl.querySelector(".end-again").addEventListener("click", restartRun);
+  endEl.className = "fix end"; endEl.hidden = false; void endEl.offsetWidth; endEl.classList.add("in"); fixScrim.classList.add("on");
+  setChip(won ? "healing" : "stuck", won ? `Run complete: all ${STUCKABLE.length} stages fixed` : "All apps lost");
+  setTimeout(() => { const b = endEl.querySelector(".end-cta"); if (b) b.focus({ preventScroll: true }); }, 500);
+}
+function showIntro() {
+  const el = document.getElementById("introCard"); failAt = 1e9;
+  el.hidden = false; el.className = "fix intro"; void el.offsetWidth; el.classList.add("in"); fixScrim.classList.add("on");
+  setTimeout(() => document.getElementById("introGo").focus({ preventScroll: true }), 500);
+  document.getElementById("introGo").onclick = () => {
+    el.classList.remove("in"); el.classList.add("out"); fixScrim.classList.remove("on");
+    setTimeout(() => { el.hidden = true; }, 650); scheduleFailure(2.5);
+  };
+}
+function restartRun() {
+  endEl.hidden = true; fixScrim.classList.remove("on"); endShown = false; fixedStages.clear(); doom.lost = 0;
+  pkgs.forEach((q, i) => { q.dead = false; q.die = null; q.s = i / PKG_N; q.pop = 0; pkgMesh.setColorAt(i, q.col); });
+  if (pkgMesh.instanceColor) pkgMesh.instanceColor.needsUpdate = true;
+  resetGift(); updateHud(); setChip("running", `Fix ${STUCKABLE.length} stuck stages to unlock a surprise`); scheduleFailure(3);
+}
+function burst(p) {
+  let n = 0;
+  for (const sh of shards) { if (sh.life > 0) continue; sh.life = 0.7 + Math.random() * 0.5; sh.p.copy(p); sh.v.set(Math.random() * 2 - 1, Math.random() * 1.6 + 0.6, Math.random() * 2 - 1).multiplyScalar(1.8); if (++n >= 16) break; }
+}
+const APP_FLOAT = 0.34;   // apps hover above the track
+const PKG_N = 60, LANES = [-0.3, 0, 0.3], PKG_SPEED = 0.032;
+function buildPackages() {
+  const pts = [];
+  STAGES.forEach((st, i) => {
+    pts.push(stages[i].center.clone().setY(stages[i].center.y + 0.02));
+    pts.push(arrows[i].center.clone().add(new THREE.Vector3(0, 0.23, 0)));
+  });
+  pkgCurve = new THREE.CatmullRomCurve3(pts, true, "centripetal", 0.5);
+  const geo = new RoundedBoxGeometry(0.18, 0.18, 0.18, 3, 0.045);   // soft rounded app tiles
+  const mat = new THREE.MeshStandardMaterial({ color: "#ffffff", roughness: 1, metalness: 0, emissive: "#ffffff", emissiveIntensity: 0.06 });
+  pkgMesh = new THREE.InstancedMesh(geo, mat, PKG_N); pkgMesh.castShadow = true; trackRoot.add(pkgMesh);
+  const cols = ["#F4E6FF", "#99FFED", "#8DE4FF", "#E0B7FF", "#FFFFFF"].map(c => new THREE.Color(c));
+  for (let i = 0; i < PKG_N; i++) {
+    pkgs.push({ s: i / PKG_N, lane: i % 3, wob: Math.random() * 6.28, spin: Math.random() * 6.28, col: cols[i % cols.length], dead: false, die: null, pop: 1 });
+    pkgMesh.setColorAt(i, cols[i % cols.length]);
+  }
+  // shards for apps that blow up
+  shardMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.075, 0.075, 0.075), new THREE.MeshBasicMaterial({ color: "#FF4A08" }), SHARD_N);
+  shardMesh.frustumCulled = false; trackRoot.add(shardMesh);
+  for (let i = 0; i < SHARD_N; i++) { shards.push({ life: 0, p: new THREE.Vector3(), v: new THREE.Vector3() }); shardMesh.setMatrixAt(i, _zero); }
+  gateMesh = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.8, 0.08),
+    new THREE.MeshBasicMaterial({ color: "#FF3B4A", transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false }));
+  gateMesh.visible = false; trackRoot.add(gateMesh);
+}
+const _p = new THREE.Vector3(), _t = new THREE.Vector3(), _lat = new THREE.Vector3(), _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _sc = new THREE.Vector3();
+function updatePackages(dt) {
+  if (!pkgCurve) return;
+  const gateOn = stuck >= 0;
+  const gateS = gateOn ? (2 * ((stuck + 7) % 8) + 1) / 16 : -1;
+  releaseBoost = Math.max(0, releaseBoost - dt);
+  const speed = PKG_SPEED * (1 + releaseBoost * 0.5);
+  // queue ranks per lane
+  const rank = new Map();
+  if (gateOn) {
+    [0, 1, 2].forEach(l => {
+      pkgs.filter(q => q.lane === l && !q.dead && !q.die).map(q => ({ q, d: (gateS - q.s + 1) % 1 })).filter(o => o.d < 0.35)
+        .sort((a, b) => a.d - b.d).forEach((o, r) => rank.set(o.q, r));
+    });
+  }
+  let colorsDirty = false;
+  const frozen = timeFrozen();
+  if (doomActive() && !frozen) doom.t += dt;
+  if (gateOn && doomActive() && !frozen && doom.t >= doom.next) {
+    doom.next += 1;
+    const cand = pkgs.filter(q => !q.dead && !q.die && q.queued);   // only apps actually stuck in the pile
+    if (cand.length) { const q = cand[Math.floor(Math.random() * cand.length)]; pkgCurve.getPoint(q.s, _p); pkgCurve.getTangent(q.s, _t); _lat.set(0, 1, 0).cross(_t).normalize(); _p.addScaledVector(_lat, LANES[q.lane]); _p.y += APP_FLOAT; killApp(q, _p, _lat); }
+  }
+  // lost apps come back one by one after the fix (new builds entering at Plan)
+  pkgs.forEach((q, i) => {
+    if (q.dead) { pkgMesh.setMatrixAt(i, _zero); return; }
+    if (q.die) {                                   // falling off the track, or blowing up
+      const d = q.die; d.t += dt;
+      if (d.t < dt * 1.5) { pkgMesh.setColorAt(i, RED_C); colorsDirty = true; }
+      if (d.type === "boom") {                     // catches fire, flickers and swells, then blows apart
+        const BURN = 0.9;
+        if (d.t < BURN) {
+          pkgMesh.setColorAt(i, FIRE_C.copy(FIRE_A).lerp(FIRE_B, 0.5 + 0.5 * Math.sin(d.t * 40 + i))); colorsDirty = true;
+          d.ember = (d.ember || 0) + dt; if (d.ember > 0.08) { d.ember = 0; ember(d.p); }
+        }
+        const sw = d.t < BURN ? 1 + 0.25 * (d.t / BURN) + Math.sin(d.t * 50) * 0.05 : 0;
+        if (d.t >= BURN && !d.burst) { d.burst = true; burst(d.p); }
+        _q.setFromEuler(new THREE.Euler(Math.sin(d.t * 30) * 0.15, d.t * 2, Math.cos(d.t * 27) * 0.15));
+        pkgMesh.setMatrixAt(i, _m.compose(_p.copy(d.p).add(_t.set(0, d.t * 0.12, 0)), _q, _sc.setScalar(sw)));
+        if (d.t > BURN + 0.05) { q.dead = true; q.die = null; }
+      } else {
+        d.v.y -= 9.8 * dt; d.p.addScaledVector(d.v, dt);
+        _q.setFromEuler(new THREE.Euler(d.r.x * d.t, d.r.y * d.t, d.r.z * d.t));
+        pkgMesh.setMatrixAt(i, _m.compose(d.p, _q, _sc.setScalar(Math.max(0, 1 - Math.max(0, d.t - 1.0) / 0.6))));
+        if (d.t > 1.6) { q.dead = true; q.die = null; }
+      }
+      return;
+    }
+    if (frozen) { pkgMesh.setMatrixAt(i, _m.compose(q.lastP || _p.set(0, -99, 0), _q.copy(q.lastQ || _q), _sc.copy(q.lastS || _sc.set(1, 1, 1)))); return; }
+    let queued = false;
+    if (gateOn && rank.has(q)) {
+      const stopD = 0.012 + rank.get(q) * 0.0105, d = (gateS - q.s + 1) % 1;
+      if (d - speed * dt <= stopD) { q.s = (gateS - stopD + 1) % 1; queued = true; }
+      else q.s = (q.s + speed * dt) % 1;
+    } else q.s = (q.s + speed * dt) % 1;
+    q.queued = queued;
+    pkgCurve.getPoint(q.s, _p); pkgCurve.getTangent(q.s, _t);
+    _lat.set(0, 1, 0).cross(_t).normalize();
+    _p.addScaledVector(_lat, LANES[q.lane]); _p.y += APP_FLOAT;
+    let sq = 1;
+    if (queued) {                                 // squeezed and jostling behind the gate
+      q.wob += dt * 14; _p.addScaledVector(_lat, Math.sin(q.wob) * 0.035); _p.y += Math.abs(Math.sin(q.wob * 1.3)) * 0.04; sq = 0.86;
+    } else _p.y += Math.sin(timer * 1.8 + i * 1.7) * 0.05;   // gentle hover
+    q.spin += dt * (queued ? 0.4 : 1.6);
+    _q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.atan2(_t.x, _t.z) + q.spin * 0.2);
+    q.pop = Math.min(1, q.pop + dt * 3); const pp = q.pop < 1 ? 1.2 * Math.sin(q.pop * Math.PI * 0.6) : 1;
+    _sc.set(pp / sq, pp * sq, pp / sq);
+    pkgMesh.setMatrixAt(i, _m.compose(_p, _q, _sc)); q.lastP = _p.clone(); q.lastQ = _q.clone(); q.lastS = _sc.clone();
+  });
+  pileCount = pkgs.reduce((n, q) => n + (q.queued && !q.dead && !q.die ? 1 : 0), 0);
+  if (colorsDirty && pkgMesh.instanceColor) pkgMesh.instanceColor.needsUpdate = true;
+  shards.forEach((sh, i) => {
+    if (sh.life <= 0) { shardMesh.setMatrixAt(i, _zero); return; }
+    sh.life -= dt; sh.v.y -= 6 * dt; sh.p.addScaledVector(sh.v, dt);
+    shardMesh.setMatrixAt(i, _m.compose(sh.p, _q.setFromEuler(new THREE.Euler(sh.life * 9, sh.life * 7, 0)), _sc.setScalar(Math.max(0, sh.life) * 1.3)));
+  });
+  shardMesh.instanceMatrix.needsUpdate = true;
+  pkgMesh.instanceMatrix.needsUpdate = true;
+  // the gate stands on the arrow in front of the stuck stage
+  if (gateOn) {
+    const a = arrows[(stuck + 7) % 8]; pkgCurve.getTangent(gateS, _t); _lat.set(0, 1, 0).cross(_t).normalize();
+    gateMesh.visible = true; gateMesh.position.copy(a.center).add(new THREE.Vector3(0, 0.5, 0));
+    gateMesh.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(_lat, new THREE.Vector3(0, 1, 0), _t.clone().normalize()));
+    gateMesh.material.opacity = (state === "healing" ? Math.max(0, 1 - healT / HEAL_TIME) : 1) * (0.35 + 0.25 * Math.sin(timer * 6));
+  } else gateMesh.visible = false;
+}
+
+// ---------- Bitbot behaviour: home spots, Superman flights, heal, corkscrew ----------
+const tmp = new THREE.Vector3(), tc = new THREE.Color();
+let headRaw = null;
+let yaw = 0, roll = 0, pitch = 0, flight = null, headBone = null, headYaw = 0, headPitch = 0, mouth = null, mouthScaleY = 1;
+const yawTo = d => Math.atan2(d.x, d.z);
+function camYaw() { tmp.copy(camera.position).sub(bot.position); tmp.y = 0; return yawTo(tmp); }
+function angDelta(a, b) { const d = b - a; if (!isFinite(d)) return 0; return d - 2 * Math.PI * Math.round(d / (2 * Math.PI)); }   // no while-loops: a bad value can never hang the page
+
+// home spots: 0 = in front of the camera (seen from behind), 1 = top left, 2 = top right
+const HOMES = ["camera", "left", "right"];
+let homeIdx = 0;
+function homePose(kind, stuckHere) {
+  const fwd = TARGET.clone().sub(CAM_POS).normalize(), right = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0, 1, 0)).normalize(), upv = new THREE.Vector3().crossVectors(right, fwd);
+  if (kind === "camera") {
+    // while something is stuck he drifts a bit further in, so his face reads when he glances back
+    const d = stuckHere ? 17 : 6.8, fh = 2 * d * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+    const headWorld = CAM_POS.clone().addScaledVector(fwd, d).addScaledVector(upv, (stuckHere ? 0.16 : -0.30) * fh).addScaledVector(right, (stuckHere ? (stuckCentral ? 0.6 : 0) : 0.05) * fh);   // stuck: centred, or to the side when the issue itself is central, so he never covers it
+    const fh2 = fwd.clone().setY(0).normalize(), rgt = new THREE.Vector3(-fh2.z, 0, fh2.x);
+    // idle: centred, seen from behind. Stuck: centred, side-on (90 deg), body turned toward the issue's side; his head turns to us
+    return { pos: headWorld.add(new THREE.Vector3(0, -1.5, 0)), yaw: stuckHere ? yawTo(rgt.clone().multiplyScalar(stuckSide)) : yawTo(fwd) };
+  }
+  const nx = kind === "left" ? -0.62 : 0.62, ny = 0.42;
+  const dir = new THREE.Vector3(nx, ny, 0.5).unproject(camera).sub(camera.position).normalize();
+  const pos = camera.position.clone().addScaledVector(dir, 40);
+  tmp.copy(camera.position).sub(pos); tmp.y = 0;
+  return { pos, yaw: yawTo(tmp) + (kind === "left" ? 0.5 : -0.5) };
+}
+
+function makeFlight(pts, speed, kind, stageIdx) {
+  const curve = new THREE.CatmullRomCurve3(pts, false, "centripetal", 0.5);
+  flight = { curve, t: 0, dur: THREE.MathUtils.clamp(curve.getLength() / 9, 3.0, 4.8), kind, stage: stageIdx };
+  play("Superman", 0.4);
+}
+// direct, swooping arc to a point, with a barrel roll in the middle and a soft landing
+function arcTo(dest, kind, stageIdx) {
+  const showy = kind === "respond" && HOMES[homeIdx] === "camera";   // the dive from the camera spot is the one big move; everything else stays calm
+  const from = bot.position.clone(), mid = from.clone().lerp(dest, 0.6);
+  mid.y += showy ? 2.0 : 0.7;
+  const side = new THREE.Vector3().subVectors(dest, from).cross(new THREE.Vector3(0, 1, 0)).normalize().multiplyScalar(showy ? 1.6 : 0.3);
+  const approach = dest.clone().add(new THREE.Vector3(0, 0.9, 0)).addScaledVector(new THREE.Vector3().subVectors(from, dest).setY(0).normalize(), 1.6);
+  makeFlight([from, from.clone().lerp(mid, 0.5).add(side), mid, approach, dest], 6.5, kind, stageIdx);
+  flight.spinDir = showy ? (Math.random() < 0.5 ? 1 : -1) : 0; flight.calm = !showy;
+}
+function lapTo(stageIdx) { arcTo(stages[stageIdx].hover.clone(), "respond", stageIdx); }
+function corkscrewThenHome() { homeIdx = (homeIdx + 1) % 3; arcTo(homePose(HOMES[homeIdx]).pos, "home"); }
+
+// ---------- pipeline state machine ----------
+// running -> stuck (waits for a click) -> responding (lap) -> reacting -> healing -> running (corkscrew + fly home)
+let state = "running", stuck = -1, lastStuck = -1, timer = 0, chase = 0, healT = 0, failAt = 1e9, reactT = 0;
+let shake = 0, confirmT = -1, stuckSince = 0, viewerBlend = 0, stuckBodyYaw = null, neckTarget = null, neckYaw = 0, neckPitch = 0, neckAmt = 0, bodyTwistTarget = 0, bodyLeanTarget = 0, bodyLean = 0; const neckFix = new THREE.Quaternion();
+const HEAL_TIME = 3.5, CHARGE_T = 0.55;   // heal: wind-up (dip, arms back), then the burst
+const GLANCE_GAPS = [5, 5.5, 4.2, 6, 4.8], GLANCE_HOLDS = [2, 3, 2.4, 1.8, 2.8];
+let glance = { on: false, at: 1e9, end: 0, i: 0 }, stuckSide = 1, stuckCentral = false;
+const NECK_YAW = THREE.MathUtils.degToRad(45), NECK_UP = 0.5, NECK_DOWN = 0.55;   // neck range: 45 deg left/right, no sideways tilt
+function setChip(st, html) { chip.dataset.state = st; chipText.innerHTML = html; }
+function scheduleFailure(sec) { failAt = fixedStages.size === STUCKABLE.length ? 1e9 : timer + sec; }
+function fail() {
+  let s; const fq = new URLSearchParams(location.search).get("stage"); const left = STUCKABLE.filter(i => !fixedStages.has(i));
+  if (fq === null && !left.length) return;                                  // all fixed: the run is over
+  s = fq !== null ? +fq : left[Math.floor(Math.random() * left.length)];
+  fix = { open: false, ready: false };   // fresh fix state per failure (a stale 'ready' hid the countdown on later stages)
+  stuck = s; lastStuck = s; state = "stuck"; stuckSince = timer; doom.on = true; doom.t = 0; doom.next = DOOM_GRACE; glance = { on: false, at: timer + 5, end: 0, i: 0 };
+  const ipx = stages[s].center.clone().applyMatrix4(trackRoot.matrixWorld).project(camera).x;   // where the issue sits on screen
+  stuckCentral = Math.abs(ipx) < 0.3; stuckSide = stuckCentral ? -1 : (Math.sign(ipx) || 1);   // central issue (Release): he moves aside and faces it if (!flight) play("Thinking", 0.8);
+  setChip("stuck", `<span class="stage-name">${NICE(STAGES[s])}</span>&nbsp;is stuck. Click it to send Bitbot`);
+}
+function respond() {
+  if (state !== "stuck") return;
+  state = "arriving";
+  setChip("arriving", `Bitbot is on the way to <span class="stage-name">${NICE(STAGES[stuck])}</span>`);
+  lapTo(stuck);
+}
+function arrive() {
+  flight = null; state = "reacting"; reactT = 0;
+  play("Worried", 0.4);
+}
+// ---------- fix window: shown after Bitbot arrives, before he heals. One card per stage (approved tool mapping) ----------
+const fixEl = document.getElementById("fix"), fixScrim = document.getElementById("fixScrim");
+const SIM = new URLSearchParams(location.search).has("sim"), SHOWFIX = new URLSearchParams(location.search).has("showfix");
+const FIXES = {
+  PLAN: { crumb: "Integrations &rsaquo; Firebase Crashlytics", page: "Crash cluster #A12", meta: "Release 4.11.2 &middot; iOS + Android", tool: "Firebase Crashlytics &middot; Embrace &middot; Instabug", url: "console.firebase.google.com / mobile-app / crashlytics", title: "Top crash has no owner",
+    text: "The biggest crash from the last release has no ticket, so the next cycle can't be planned.",
+    viz: `<div class="fix-row"><span><b>CheckoutViewModel.kt</b> &middot; NullPointerException</span><span class="pill" data-p>Unassigned</span></div>
+          <div class="fix-row"><span class="k">Users affected</span><span class="v">1,284 &middot; last 7 days</span></div>`,
+    steps: [{ b: "Create ticket", s: "From this crash cluster", go: "Create ticket", ok: "APP-482 &#10003;" },
+            { b: "Assign owner", s: "Mobile &middot; Checkout squad", go: "Assign", ok: "Assigned &#10003;", fx: v => { const p = v.querySelector("[data-p]"); p.innerHTML = "APP-482 &middot; Checkout"; p.className = "pill ok"; } }] },
+  CODE: { crumb: "Bitrise CI &rsaquo; bitbot-game-ios &rsaquo; Settings", page: "Repository", meta: "Webhook &middot; GitHub", tool: "GitHub &middot; Bitbucket &middot; AWS CodeCommit", url: "app.bitrise.io / mobile-app / settings / repository", title: "Commits don't start builds",
+    text: "Repository access expired, so the webhook stopped firing and new commits never reach the pipeline.",
+    viz: `<div class="fix-row"><span><b>bitbot/bitbot-game-ios</b> &middot; main</span><span class="pill" data-p>Access expired</span></div>
+          <div class="fix-row"><span class="k">Last webhook</span><span class="v" data-w>failed &middot; 401</span></div>`,
+    steps: [{ b: "Reconnect repository", s: "Re-authorize Bitrise", go: "Reconnect", ok: "Connected &#10003;", fx: v => { const p = v.querySelector("[data-p]"); p.innerHTML = "Connected"; p.className = "pill ok"; } },
+            { b: "Re-run last webhook", s: "Push to main &middot; 3 commits", go: "Re-run", ok: "Build #200 &#10003;", fx: v => { v.querySelector("[data-w]").innerHTML = "delivered &middot; 200"; } }] },
+  BUILD: { crumb: "Bitrise CI &rsaquo; bitbot-game-ios", page: "Build #199", meta: "ci-workflow &middot; Webhook &middot; main", tool: "Bitrise CI &middot; Build Cache &middot; Insights", url: "app.bitrise.io / mobile-app / workflow / stacks & machines", title: "Build is far too slow",
+    text: "Insights flags this as your slowest workflow. Same code, third build in a row, still full time: slow machine, everything recompiles.",
+    viz: `<div class="bars"><div class="bar"><span>#197</span><div style="width:92%"></div></div><div class="bar"><span>#198</span><div style="width:95%"></div></div>
+          <div class="bar"><span>#199</span><div style="width:93%"></div></div><div class="bar next" data-n><span>next</span><div style="width:93%"></div></div></div>`,
+    steps: [{ b: "Machine type", s: "M2 Pro &rarr; M4 Pro (about 2&times; faster)", go: "Switch to M4 Pro", ok: "M4 Pro &#10003;", fx: v => { v.querySelector("[data-n] div").style.width = "46%"; } },
+            { b: "Build Cache", s: "Reuse unchanged outputs", go: "Turn on", ok: "Cache on &#10003;", fx: v => { const n = v.querySelector("[data-n]"); n.classList.add("fast"); n.querySelector("div").style.width = "16%"; } }] },
+  TEST: { crumb: "Bitrise CI &rsaquo; bitbot-game-ios", page: "Build #201 &middot; Tests", meta: "ci-workflow &middot; PR #16601", tool: "Bitrise CI &middot; Release Management", url: "app.bitrise.io / mobile-app / build #201 / tests", title: "8 tests failing",
+    text: "3 of them are flaky. The build can't go to testers until the suite is green.",
+    viz: `<div class="tests" data-t>${"s".repeat(16).split("").map(() => "<i></i>").join("")}${"<i class=f></i>".repeat(5)}${"<i class=k></i>".repeat(3)}</div>
+          <div class="fix-row"><span class="k">Unit &middot; UI &middot; Device</span><span class="v" data-r>16 passed &middot; 5 failed &middot; 3 flaky</span></div>`,
+    steps: [{ b: "Quarantine flaky tests", s: "3 tests &middot; this branch", go: "Quarantine", ok: "Quarantined &#10003;", fx: v => { v.querySelectorAll(".k").forEach(i => i.className = "q"); } },
+            { b: "Re-run failed tests", s: "5 tests", go: "Re-run", ok: "All green &#10003;", fx: v => { v.querySelectorAll(".tests .f").forEach(i => i.className = ""); v.querySelector("[data-r]").innerHTML = "21 passed &middot; 3 quarantined"; } },
+            { b: "Send to testers", s: "Release Management &middot; QA group", go: "Send", ok: "Sent &#10003;" }] },
+  RELEASE: { crumb: "Release Management &rsaquo; bitbot-game-ios", page: "Release 4.12.0", meta: "Release candidate &middot; build 512", tool: "Release Management", url: "app.bitrise.io / release-management / 4.12.0", title: "Release candidate blocked",
+    text: "Release notes are missing and the approval is still pending.",
+    viz: `<div class="fix-row"><span><b>4.12.0</b> (512) &middot; iOS + Android</span><span class="pill" data-p>Blocked</span></div>
+          <div class="fix-row"><span class="k">What to test</span><span class="v" data-w>&mdash;</span></div>`,
+    steps: [{ b: "Release notes", s: "Release notes and what to test", go: "Add notes", ok: "Added &#10003;", fx: v => { v.querySelector("[data-w]").innerHTML = "New checkout flow"; } },
+            { b: "Approval", s: "Release manager sign-off", go: "Approve", ok: "Approved &#10003;", fx: v => { const p = v.querySelector("[data-p]"); p.innerHTML = "Ready"; p.className = "pill ok"; } }] },
+  DEPLOY: { crumb: "Release Management &rsaquo; bitbot-game-ios", page: "Store submission", meta: "Release 4.12.0 &middot; build 512", tool: "Bitrise CI &middot; Release Management", url: "app.bitrise.io / release-management / 4.12.0 / stores", title: "Store submission stuck",
+    text: "Metadata is missing, so the upload would have to be redone by hand.",
+    viz: `<div class="fix-row"><span><b>App Store</b></span><span class="pill" data-a>Metadata missing</span></div>
+          <div class="fix-row"><span><b>Google Play</b></span><span class="pill" data-g>Metadata missing</span></div>`,
+    steps: [{ b: "Submit to stores", s: "Use the saved metadata", go: "Submit", ok: "Submitted &#10003;", fx: v => { ["a", "g"].forEach(k => { const p = v.querySelector(`[data-${k}]`); p.innerHTML = "In review"; p.className = "pill warn"; }); } },
+            { b: "Staged rollout", s: "Start with 5% of users", go: "Start", ok: "Rolling out &#10003;" }] },
+  OPERATE: { crumb: "Integrations &rsaquo; LaunchDarkly", page: "new-checkout-flow", meta: "Feature flag &middot; production", tool: "LaunchDarkly", url: "app.launchdarkly.com / mobile-app / production / flags", title: "New feature throwing errors",
+    text: "The new checkout flow is live and erroring in production.",
+    viz: `<div class="fix-row"><span><b>new-checkout-flow</b> &middot; production</span><span class="toggle" data-f></span></div>
+          <div class="fix-row"><span class="k">Error rate</span><span class="pill" data-e>Rising</span></div>`,
+    steps: [{ b: "Kill switch", s: "Turn the flag off for everyone", go: "Turn off", ok: "Off &#10003;", fx: v => { v.querySelector("[data-f]").classList.add("off"); const p = v.querySelector("[data-e]"); p.innerHTML = "Back to normal"; p.className = "pill ok"; } }] },
+  MONITOR: { crumb: "Release Management &rsaquo; bitbot-game-ios", page: "Rollout &middot; 4.12.0", meta: "Staged rollout &middot; crash data from Firebase", tool: "Firebase &middot; Embrace &middot; Instabug &rarr; Release Management", url: "app.bitrise.io / release-management / 4.12.0 / rollout", title: "Crash rate spiking",
+    text: "Crash-free sessions dropped right after the staged rollout started.",
+    viz: `<svg viewBox="0 0 300 70" aria-hidden="true"><polyline points="0,14 50,13 100,15 140,14 170,30 200,48 230,58" fill="none" stroke="#FF3B4A" stroke-width="3" stroke-linejoin="round"/>
+            <polyline data-l points="230,58 300,58" fill="none" stroke="#CBBBD9" stroke-width="3" stroke-dasharray="5 5"/></svg>
+          <div class="fix-row"><span class="k">Staged rollout</span><span class="pill warn" data-p>20% &middot; expanding</span></div>`,
+    steps: [{ b: "Pause rollout", s: "Hold at 20%", go: "Pause", ok: "Paused &#10003;", fx: v => { const p = v.querySelector("[data-p]"); p.innerHTML = "Paused at 20%"; p.className = "pill mute"; } },
+            { b: "Send to Plan", s: "New ticket from the crash cluster", go: "Send", ok: "Sent to Plan &#10003;" }] },
+};
+// CODE stage: RDE option 1 is the default (user choice, Oct 11). Alternatives kept: ?code=repo|rde2|rde3
+const CODE_VARIANTS = {
+  repo: FIXES.CODE,
+  rde1: { crumb: "Remote Dev Environments &rsaquo; bitbot-game-ios", page: "Build #203", meta: "ci-workflow &middot; PR #16612", tool: "Remote Dev Environments &middot; GitHub",
+    title: "Works on my machine. Fails on CI.", text: "The change passes on the developer's laptop but fails on CI, and nobody can reproduce it locally.",
+    viz: `<div class="fix-row"><span><b>Your laptop</b> &middot; Xcode 26.0</span><span class="pill ok">passes</span></div>
+          <div class="fix-row"><span><b>CI</b> &middot; Build #203</span><span class="pill" data-c>fails</span></div>
+          <div class="fix-row"><span><b>Remote Dev Environment</b> &middot; same VM as CI</span><span class="pill mute" data-r>not started</span></div>`,
+    steps: [{ b: "Open the failing VM", s: "Same machine, stack and cache as CI &middot; ready in seconds", go: "Open in RDE", ok: "Reproduced &#10003;", fx: v => { const p = v.querySelector("[data-r]"); p.innerHTML = "failure reproduced"; p.className = "pill warn"; } },
+            { b: "Fix and push", s: "Edit in VS Code, Cursor or JetBrains", go: "Push fix", ok: "CI green &#10003;", fx: v => { ["c", "r"].forEach(k => { const p = v.querySelector(`[data-${k}]`); p.innerHTML = "passes"; p.className = "pill ok"; }); } }] },
+  rde2: { crumb: "Remote Dev Environments &rsaquo; bitbot-game-ios", page: "New teammate setup", meta: "Day 1 &middot; local machine", tool: "Remote Dev Environments &middot; GitHub",
+    title: "Day one, and still can't build", text: "The new developer's Mac has the wrong Xcode, CocoaPods won't install and there's no simulator, so the first commit is days away.",
+    viz: `<div class="fix-row"><span><b>Xcode 26.1</b></span><span class="pill" data-a>missing</span></div>
+          <div class="fix-row"><span><b>CocoaPods &middot; fastlane</b></span><span class="pill" data-b>version mismatch</span></div>
+          <div class="fix-row"><span><b>iOS Simulator</b></span><span class="pill" data-c>not installed</span></div>`,
+    steps: [{ b: "Start from the team template", s: "Apple silicon Mac &middot; toolchain preinstalled and cached", go: "Start session", ok: "Ready &#10003;", fx: v => { ["a", "b", "c"].forEach(k => { const p = v.querySelector(`[data-${k}]`); p.innerHTML = "preinstalled"; p.className = "pill ok"; }); } },
+            { b: "Open in your editor", s: "VS Code &middot; Cursor &middot; JetBrains &middot; SSH", go: "Open", ok: "Coding &#10003;" }] },
+  rde3: { crumb: "Remote Dev Environments &rsaquo; Agents", page: "APP-482", meta: "Bug &middot; from Plan", tool: "Remote Dev Environments &middot; Claude Code &middot; Codex",
+    title: "The fix is waiting on a free engineer", text: "A known crash fix sits in the backlog. An AI agent could take it, but it has no real Mac to build and test on.",
+    viz: `<div class="fix-row"><span><b>APP-482</b> &middot; Checkout crash</span><span class="pill" data-t>unassigned</span></div>
+          <div class="fix-row"><span class="k">Environment</span><span class="v" data-e>none</span></div>
+          <div class="fix-row"><span class="k">Tests</span><span class="v" data-s>&mdash;</span></div>`,
+    steps: [{ b: "Hand it to an agent", s: "Claude Code in a CI-matched Mac VM", go: "Assign agent", ok: "Agent on it &#10003;", fx: v => { const p = v.querySelector("[data-t]"); p.innerHTML = "agent working"; p.className = "pill warn"; v.querySelector("[data-e]").innerHTML = "M4 Pro VM &middot; same stack as CI"; } },
+            { b: "Review the pull request", s: "Code written, tests run in the VM", go: "Review PR", ok: "Merged &#10003;", fx: v => { const p = v.querySelector("[data-t]"); p.innerHTML = "PR #16620 merged"; p.className = "pill ok"; v.querySelector("[data-s]").innerHTML = "all green"; } }] },
+};
+FIXES.CODE = CODE_VARIANTS[new URLSearchParams(location.search).get("code") || (location.hash.match(/rde[123]/) || [])[0]] || CODE_VARIANTS.rde1;   // chosen: RDE "works on my machine" (others: #repo-style via ?code=repo, #rde2, #rde3)
+let fix = { open: false, ready: false };
+function openFix(si) {
+  fix = { open: true, ready: false };
+  if (SIM && !SHOWFIX) { fix.ready = true; return; }                // test captures skip the window
+  const F = FIXES[STAGES[si]];
+  fixEl.innerHTML = `<div class="fix-bar"><span class="fix-logo"><svg viewBox="0 0 20 16" aria-hidden="true"><rect x="1" y="3" width="18" height="12" rx="4" fill="none" stroke="#fff" stroke-width="1.8"/><path d="M10 0v3" stroke="#fff" stroke-width="1.8"/><circle cx="7" cy="9" r="1.2" fill="#fff"/><circle cx="13" cy="9" r="1.2" fill="#fff"/></svg>bitrise</span><span class="fix-icons"><i></i></span></div>
+    <div class="fix-app">
+    <div class="fix-body"><div class="fix-crumb">${F.crumb.split(" &rsaquo; ").map(c => `<b>${c}</b>`).join(" &nbsp;&rsaquo;&nbsp; ")} &nbsp;&rsaquo;</div>
+    <div class="fix-titlerow"><h2 id="fixTitle">${F.page}</h2><span class="fix-ghost">${F.tool}</span></div>
+    <div class="fix-status"><div class="top"><span class="st state">STUCK</span><span>${F.meta}</span><span class="fix-clock" id="fixClock"></span></div><div class="issue">${F.title}</div><p>${F.text}</p></div>
+    <div class="fix-viz">${F.viz}</div>
+    <ol class="fix-steps">${F.steps.map((s, i) => `<li class="${i ? "waiting" : ""}"><div><b>${s.b}</b><span>${s.s}</span></div><button type="button" ${i ? "disabled" : ""}>${s.go}</button></li>`).join("")}</ol></div></div>`;
+  const viz = fixEl.querySelector(".fix-viz"), lis = [...fixEl.querySelectorAll(".fix-steps li")];
+  lis.forEach((li, i) => li.querySelector("button").addEventListener("click", () => {
+    if (li.classList.contains("ok") || li.classList.contains("waiting")) return;
+    const s = F.steps[i], b = li.querySelector("button");
+    li.classList.add("ok"); b.innerHTML = s.ok; b.disabled = true; if (s.fx) s.fx(viz);
+    const nx = lis[i + 1];
+    if (nx) { nx.classList.remove("waiting"); const nb = nx.querySelector("button"); nb.disabled = false; nb.focus({ preventScroll: true }); }
+    else closeFix(si);
+  }));
+  fixEl.className = "fix"; fixEl.hidden = false; void fixEl.offsetWidth; fixEl.classList.add("in"); fixScrim.classList.add("on");
+  if (SHOWFIX && SIM) fixEl.style.animationDuration = "1ms";   // test captures: show the settled window
+  if (SHOWFIX && SIM && new URLSearchParams(location.search).has("clickfix")) lis.forEach((li, i) => setTimeout(() => li.querySelector("button").click(), 400 + i * 400));   // test: click through
+  setChip("arriving", `Fix <span class="stage-name">${NICE(STAGES[si])}</span> in the window`);
+  setTimeout(() => { const b = fixEl.querySelector("button:not([disabled])"); if (b) b.focus({ preventScroll: true }); }, 500);
+}
+// ---------- ?asset=NAME: renders one pop-up on its own (transparent background) for PNG export ----------
+const ASSET = new URLSearchParams(location.search).get("asset");
+function renderAsset(name) {
+  document.body.classList.add("asset-mode"); failAt = 1e9;
+  const wrap = document.createElement("div"); wrap.id = "assetWrap"; document.body.appendChild(wrap);
+  const take = el => { el.hidden = false; el.classList.remove("in", "out"); el.style.animation = "none"; wrap.appendChild(el); return el; };
+  const stageOf = { code: 1, build: 2, test: 3, release: 4, deploy: 5, plan: 0, operate: 6, monitor: 7 };
+  let m;
+  if (name === "intro") take(document.getElementById("introCard"));
+  else if ((m = name.match(/^fix-(\w+?)(-done)?$/))) {
+    const si = stageOf[m[1]]; openFix(si); take(fixEl);
+    document.getElementById("fixClock").textContent = "\u23F8 time frozen \u00B7 2 lost";
+    if (m[2]) [...fixEl.querySelectorAll(".fix-steps button")].forEach(b => b.click());
+    if (m[2]) document.getElementById("fixClock").textContent = "apps safe";
+  } else if ((m = name.match(/^congrats(-final)?$/))) {
+    if (m[1]) STUCKABLE.forEach(i => fixedStages.add(i)); else fixedStages.add(2);
+    giftGotFix(m[1] ? 5 : 2); take(celebEl); celebEl.classList.add("show");
+  } else if (name === "end-win" || name === "end-gold") { STUCKABLE.forEach(i => fixedStages.add(i)); showEnd(true, name === "end-gold"); take(endEl); }
+  else if (name === "end-lose") { fixedStages.add(1); fixedStages.add(2); showEnd(false); take(endEl); }
+  else if (name === "countdown" || name === "countdown-burning") {
+    take(doomEl); doomEl.style.position = "relative"; setStopwatch(0.6, 2); doomEl.classList.toggle("urgent", name !== "countdown");
+  } else if (name === "hud") { take(hudEl); document.getElementById("giftCount").textContent = "2/5"; document.getElementById("hudAlive").textContent = "57"; document.getElementById("hudLost").textContent = "3"; hudEl.classList.add("hurt"); }
+  fixScrim.classList.remove("on");
+  requestAnimationFrame(() => { const r = wrap.getBoundingClientRect(); document.body.dataset.size = `${Math.ceil(r.width)}x${Math.ceil(r.height)}`; });
+}
+function closeFix(si) {
+  if (ASSET) { fixEl.classList.add("done"); fixEl.querySelector(".state").textContent = "FIXED"; return; }
+  fixEl.classList.add("done"); fixEl.querySelector(".state").innerHTML = "FIXED";
+  setTimeout(() => {
+    // dive back down into the stage it belongs to
+    const p = stages[si].center.clone().project(camera), r = canvas.getBoundingClientRect();
+    const sx = r.left + (p.x * 0.5 + 0.5) * r.width, sy = r.top + (0.5 - p.y * 0.5) * r.height;   // stage on screen
+    const tx = sx - (r.left + r.width * 0.5), ty = sy - (r.top + r.height * 0.47);   // from the window's resting centre (left 50%, top 47%)
+    fixEl.style.setProperty("--tx", tx.toFixed(1) + "px"); fixEl.style.setProperty("--ty", ty.toFixed(1) + "px");
+    if (SIM) document.body.dataset.fixdbg = JSON.stringify({ p: [p.x, p.y], sx, sy, tx, ty });
+    fixEl.classList.remove("in"); fixEl.classList.add("out"); fixScrim.classList.remove("on");
+    setTimeout(() => { fixEl.hidden = true; fix.ready = true; }, 650);
+  }, 650);
+}
+// ---------- surprise package in the HUD: an animated gift that fills up with every fix ----------
+const giftEl = document.getElementById("hudGift"), celebEl = document.getElementById("celeb");
+let celebTimer = 0;
+function sendToken(stageIdx) {   // a glowing spark flies from the healed stage up into the HUD gift
+  const p = stages[stageIdx].center.clone().applyMatrix4(trackRoot.matrixWorld).project(camera), r = canvas.getBoundingClientRect(), g = giftEl.getBoundingClientRect();
+  const x0 = r.left + (p.x * 0.5 + 0.5) * r.width, y0 = r.top + (0.5 - p.y * 0.5) * r.height, x1 = g.left + g.width / 2, y1 = g.top + g.height / 2;
+  const t = document.createElement("div"); t.className = "token"; document.getElementById("stage").appendChild(t);
+  const mx = (x0 + x1) / 2, my = Math.min(y0, y1) - 120;
+  const anim = t.animate([{ transform: `translate(${x0}px, ${y0}px) scale(1)` }, { transform: `translate(${mx}px, ${my}px) scale(1.3)`, offset: 0.5 }, { transform: `translate(${x1}px, ${y1}px) scale(.5)` }],
+    { duration: SIM ? 1 : 1100, easing: "cubic-bezier(.4,0,.3,1)" });
+  anim.onfinish = () => { t.remove(); giftGotFix(stageIdx); };
+}
+function celebConfetti() {   // brand confetti from the centre: tiles, strips and sparkle stars in palette colours
+  if (SIM || ASSET || reduce) return;
+  const r = canvas.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+  const cols = ["#95FFEC", "#10C0C0", "#88E3FF", "#DEB4FF", "#F6EAFF", "#FF9CD8", "#FFC500", "#FFFFFF"], kinds = ["cf-tile", "cf-strip", "cf-star"];
+  for (let i = 0; i < 60; i++) {
+    const c = document.createElement("i"); c.className = "confetti " + kinds[i % 3]; c.style.background = cols[i % cols.length]; document.getElementById("stage").appendChild(c);
+    const a = Math.random() * Math.PI * 2, d = 120 + Math.random() * 240, dx = Math.cos(a) * d, dy = Math.sin(a) * d * .7 - 60;
+    c.animate([{ transform: `translate(${x}px, ${y}px) scale(.4) rotate(0)`, opacity: 1 },
+               { transform: `translate(${x + dx * .7}px, ${y + dy * .7}px) scale(1) rotate(${Math.random() * 360}deg)`, opacity: 1, offset: .45 },
+               { transform: `translate(${x + dx}px, ${y + dy + 160}px) scale(.8) rotate(${Math.random() * 720}deg)`, opacity: 0 }],
+      { duration: 1300 + Math.random() * 700, easing: "cubic-bezier(.15,.7,.35,1)" }).onfinish = () => c.remove();
+  }
+}
+function giftGotFix(stageIdx) {
+  const n = fixedStages.size, left = STUCKABLE.length - n;
+  giftEl.classList.remove("wiggle"); void giftEl.offsetWidth; giftEl.classList.add("wiggle");
+  giftEl.style.setProperty("--fill", n / STUCKABLE.length);
+  document.getElementById("giftCount").textContent = `${n}/${STUCKABLE.length}`;
+  celebEl.innerHTML = `<div class="celeb-top"><span class="celeb-tag">${NICE(STAGES[stageIdx])} fixed</span><span class="celeb-pips">${STUCKABLE.map(i => `<i class="${fixedStages.has(i) ? "on" : ""}"></i>`).join("")}</span></div>
+    <b>${left ? "Congrats!" : "All fixed!"}</b><span>${left ? `Just ${left} more ${left === 1 ? "fix" : "fixes"} to get your reward.` : "Opening your reward&hellip;"}</span>`;
+  celebEl.hidden = false; celebEl.classList.remove("show"); void celebEl.offsetWidth; celebEl.classList.add("show");
+  celebConfetti();
+  clearTimeout(celebTimer); if (!SIM) celebTimer = setTimeout(() => celebEl.classList.remove("show"), left ? 3200 : 2000);   // test captures keep it up
+  if (state === "running") setChip("running", left ? `<b>${left}</b>&nbsp;more ${left === 1 ? "fix" : "fixes"} to unlock the surprise` : "Surprise unlocked!");
+  if (!left) setTimeout(openGift, 1400);
+}
+function openGift() {
+  if (ASSET) return;
+  if (giftEl.classList.contains("open")) return;
+  const alive = pkgs.filter(q => !q.dead && !q.die).length, gold = alive >= 40;
+  giftEl.classList.toggle("gold", gold); giftEl.classList.add("open");
+  const g = giftEl.getBoundingClientRect(), cols = ["#99FFED", "#18C4C3", "#8DE4FF", "#E0B7FF", "#D7ACF9", "#FFFFFF", "#FF4A08", "#FFC24D"];
+  for (let i = 0; i < 70; i++) {   // confetti out of the HUD gift
+    const c = document.createElement("i"); c.className = "confetti"; c.style.background = cols[i % cols.length]; document.getElementById("stage").appendChild(c);
+    const a = Math.random() * Math.PI, d = 120 + Math.random() * 260, x = g.left + g.width / 2, y = g.top + g.height / 2;
+    c.animate([{ transform: `translate(${x}px, ${y}px) rotate(0)`, opacity: 1 }, { transform: `translate(${x - Math.cos(a) * d}px, ${y + Math.sin(a) * d * 1.4 + 120}px) rotate(${Math.random() * 720}deg)`, opacity: 0 }],
+      { duration: 1400 + Math.random() * 900, easing: "cubic-bezier(.2,.7,.4,1)" }).onfinish = () => c.remove();
+  }
+  setTimeout(() => showEnd(true, gold), 1300);
+}
+function resetGift() {
+  giftEl.classList.remove("open", "gold", "wiggle"); giftEl.style.setProperty("--fill", 0);
+  document.getElementById("giftCount").textContent = `0/${STUCKABLE.length}`; celebEl.classList.remove("show");
+}
+function startHeal() {
+  state = "healing"; healT = 0; play("HealCharge", 0.3);
+  setChip("healing", `Bitbot is healing <span class="stage-name">${NICE(STAGES[stuck])}</span>`);
+}
+function healed() {
+  doom.on = false; fixedStages.add(stuck); setTimeout(updateHud, 0);   // lost apps stay lost: it has weight
+  sendToken(stuck);
+  stages[stuck].red = 0; state = "running"; stuck = -1; confirmT = 0; releaseBoost = 2.5;
+  setChip("running", "Pipeline running");
+  corkscrewThenHome();
+}
+
+// heal beam (purple) + sparkles
+const beamMat = new THREE.MeshBasicMaterial({ color: PURPLE, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.45, 1, 28, 1, true), beamMat); beam.visible = false; scene.add(beam);
+const coreMat = beamMat.clone(); coreMat.color = new THREE.Color("#F2E4FF");
+function healFlameMaterial(seed) {
+  return new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    uniforms: { time: { value: 0 }, power: { value: 0 }, seed: { value: seed } },
+    vertexShader: `varying float vT; varying vec2 vUv; varying vec3 vN; varying vec3 vV;
+      void main(){ vUv = uv; vT = 1.0 - uv.y; vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `varying float vT; varying vec2 vUv; varying vec3 vN; varying vec3 vV; uniform float time, power, seed;
+      float h(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float n(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f);
+        return mix(mix(h(i), h(i+vec2(1,0)), f.x), mix(h(i+vec2(0,1)), h(i+vec2(1,1)), f.x), f.y); }
+      void main(){
+        float flow = n(vec2(vUv.x * 9.0, vT * 6.0 - time * 11.0 + seed)) * 0.55 + n(vec2(vUv.x * 18.0, vT * 13.0 - time * 19.0)) * 0.45;
+        float body = smoothstep(1.0, 0.55, vT) * (0.55 + 0.75 * flow);
+        float rim = pow(abs(dot(vN, vV)), 1.2);
+        vec3 col = mix(vec3(1.0, 0.95, 1.0), vec3(0.78, 0.45, 1.0), smoothstep(0.0, 0.3, vT));
+        col = mix(col, vec3(0.45, 0.2, 0.85), smoothstep(0.35, 0.95, vT));
+        gl_FragColor = vec4(col * body * rim * power * 1.6, 1.0);
+      }` });
+}
+const handFlames = [0, 1].map(k => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.75, 1, 40, 12, true), healFlameMaterial(k * 3.7)); m.visible = false; scene.add(m); return m; });
+const handGlowTex = (() => { const c = document.createElement("canvas"); c.width = c.height = 64; const x = c.getContext("2d");
+  const g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, "rgba(255,240,255,1)"); g.addColorStop(0.3, "rgba(200,120,255,0.7)"); g.addColorStop(1, "rgba(120,40,220,0)");
+  x.fillStyle = g; x.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
+const handGlows = [0, 1].map(() => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: handGlowTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0 })); sp.scale.setScalar(0.9); scene.add(sp); return sp; });
+let handBones = [], foreBones = [];
+const core = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.12, 1, 16, 1, true), coreMat); core.visible = false; scene.add(core);
+const sparkGeo = new THREE.BufferGeometry(); const SPN = 200; const sp = new Float32Array(SPN * 3), spv = [];
+for (let i = 0; i < SPN; i++) spv.push({ o: new THREE.Vector3(), v: new THREE.Vector3(), life: 0 });
+sparkGeo.setAttribute("position", new THREE.BufferAttribute(sp, 3));
+const sparks = new THREE.Points(sparkGeo, new THREE.PointsMaterial({ color: PURPLE, size: 0.14, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false }));
+sparks.visible = false; scene.add(sparks);
+
+// ---------- clicks ----------
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+function pick(e) {
+  if (stuck < 0) return false;
+  const r = canvas.getBoundingClientRect(); ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  return ray.intersectObjects([stages[stuck].group, stages[stuck].label], true).length > 0;
+}
+canvas.addEventListener("pointermove", e => { canvas.style.cursor = (state === "stuck" && pick(e)) ? "pointer" : "default"; });
+canvas.addEventListener("click", e => { if (state === "stuck" && pick(e)) respond(); });
+
+const look = new THREE.Vector2();
+addEventListener("pointermove", e => { look.set(e.clientX / innerWidth - 0.5, e.clientY / innerHeight - 0.5); });
+
+function resize() {
+  const w = stageEl.clientWidth, h = stageEl.clientHeight; if (!w || !h) return; const aspect = w / h;
+  renderer.setSize(w, h, false); composer.setSize(w, h); bloom.setSize(w, h);
+  const hfov = 17.5 * Math.PI / 180, vfovFromW = 2 * Math.atan(Math.tan(hfov / 2) / aspect);
+  camera.fov = Math.max(vfovFromW, 10.2 * Math.PI / 180) * 180 / Math.PI;
+  camera.aspect = aspect; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stageEl);
+
+// ---------- frame loop ----------
+const clock = new THREE.Clock(), up = new THREE.Vector3(0, 1, 0);
+const FREEZE = new URLSearchParams(location.search).has("sim");   // test captures: hold the simulated moment
+renderer.setAnimationLoop(() => { const dt = Math.min(clock.getDelta(), 0.05); if (bot && !FREEZE) step(dt); composer.render(); });
+
+function step(dt) {
+  timer += dt;
+  if (headBone && headRaw) headBone.quaternion.copy(headRaw);   // undo last frame's neck turn (some clips have no head keys)
+  mixer.update(dt);
+  if (headBone) headRaw = headBone.quaternion.clone();
+  const tx = CAM_POS.x + look.x * 0.8, ty = CAM_POS.y - look.y * 0.5;
+  camera.position.x += (tx - camera.position.x) * 0.04; camera.position.y += (ty - camera.position.y) * 0.04; camera.lookAt(TARGET);
+
+  if (state === "running" && !flight && timer > failAt) fail();
+  if (state === "reacting") { reactT += dt; if (reactT > 0.9 && !fix.open) openFix(stuck); if (fix.open && fix.ready) { fix.open = false; startHeal(); } }   // fix window between arrival and heal
+  if (state === "healing") { healT += dt; if (healT >= CHARGE_T && healT - dt < CHARGE_T) play("Heal", 0.08); if (healT > HEAL_TIME) healed(); }
+
+  // shake: a light wobble while stuck, stronger while healing, dissolving at the end
+  let shakeTarget = 0;
+  if ((state === "arriving" || state === "stuck" || state === "reacting") && pileCount > 0) shakeTarget = timeFrozen() ? 0.08 : 0.12 + 0.3 * Math.min(1, doom.t / (DOOM_GRACE + 5));   // only once apps bump into the gate, and gently
+  if (state === "healing") { const k = healT / HEAL_TIME; shakeTarget = k < 0.8 ? 0.35 + k * 1.1 : (1 - k) / 0.2 * 1.23; }
+  shake += (shakeTarget - shake) * Math.min(1, dt * 5);
+  const sAmp = reduce ? 0 : shake;
+  trackRoot.position.set(Math.sin(timer * 31) * 0.035 * sAmp, Math.sin(timer * 47) * 0.02 * sAmp, Math.cos(timer * 37) * 0.03 * sAmp);
+  trackRoot.rotation.set(Math.sin(timer * 23) * 0.004 * sAmp, 0, Math.cos(timer * 29) * 0.004 * sAmp);
+
+  // white chase + matching glow on the side walls
+  chase += dt * (reduce ? 1.2 : 2.4);
+  const blocked = stuck >= 0 && state !== "healing";
+  const resume = state === "healing" ? Math.max(0, (healT - HEAL_TIME * 0.7) / (HEAL_TIME * 0.3)) : 1;
+  if (confirmT >= 0) confirmT += dt;
+  arrows.forEach((a, i) => {
+    let v = 0;
+    a.mat.color.copy(a.base);
+    if (!blocked) {
+      const d = ((chase - i) % 8 + 8) % 8; v = Math.max(0, 1 - d / 2.2) ** 2 * 2.0 * resume;
+      a.mat.emissive.copy(LIT).multiplyScalar(v * 0.45);
+    } else if (i === (stuck + 7) % 8) {                 // only the arrow right before the stuck stage
+      const w = 0.5 + 0.5 * Math.sin(timer * 6.5); a.mat.color.copy(a.base).lerp(RED, 0.8); a.mat.emissive.copy(RED).multiplyScalar(0.3 + 0.8 * w);
+    } else { a.mat.color.multiplyScalar(0.7); a.mat.emissive.setRGB(0, 0, 0); }
+  });
+
+  stages.forEach((s, i) => {
+    // side light follows the chase: lit as the pulse passes from the arrow before it into the stage
+    let sideGlow = 0;
+    if (!blocked) { const d = ((chase - (i - 0.5)) % 8 + 8) % 8; sideGlow = Math.max(0, 1 - d / 2.6) ** 2 * resume; }
+    // after a heal, a purple confirmation wave sweeps round all the sides
+    let confirm = 0;
+    if (confirmT >= 0) { const front = confirmT * 6 - i * 0.55; confirm = front > 0 && front < 2.2 ? Math.sin(Math.PI * front / 2.2) : 0; }
+    if (confirmT > 4) confirmT = -1;
+
+    const isStuck = i === stuck;
+    let redT = isStuck && (state === "arriving" || state === "stuck" || state === "reacting") ? 1 : 0;
+    let healTgt = isStuck && state === "healing" ? THREE.MathUtils.clamp((healT - CHARGE_T) / 0.6, 0, 1) * (healT > HEAL_TIME - 0.6 ? (HEAL_TIME - healT) / 0.6 : 1) : 0;
+    if (isStuck && state === "healing") redT = THREE.MathUtils.clamp(1 - (healT - CHARGE_T) / 0.6, 0, 1);
+    s.red += (redT - s.red) * Math.min(1, dt * 6); s.heal += (healTgt - s.heal) * Math.min(1, dt * 8);
+
+    const pulse = 0.55 + 0.45 * Math.sin(timer * 5.2), _c2 = _c2s;
+    s.top.color.copy(s.baseColor).lerp(RED, s.red * 0.75).lerp(MINT, s.heal * 0.85);
+    s.top.emissive.copy(RED).multiplyScalar(s.red * (0.3 + 0.45 * pulse)).add(tc.copy(MINT).multiplyScalar(s.heal * (0.45 + 0.2 * Math.sin(timer * 14))));
+    s.label.material.color.copy(s.labelColor).lerp(new THREE.Color("#FFFFFF"), s.red).lerp(new THREE.Color("#0E5A57"), s.heal);
+    s.label.material.emissive.setRGB(1, 1, 1).multiplyScalar(s.red * 0.6);
+    if (s.side) {
+      s.side.color.copy(s.sideColor).lerp(RED, s.red * 0.5);
+      s.side.emissive.copy(PURPLE).multiplyScalar(sideGlow * 0.35).add(tc.copy(MINT).multiplyScalar(confirm * 0.8 + s.heal * 0.6)).add(_c2.copy(RED).multiplyScalar(s.red * 0.3 * pulse));
+    }
+  });
+
+  updatePackages(dt); updateDoomBadge();
+  // tiles float, stars drift
+  partData.forEach(q => { q.m.position.set(q.base.x, q.base.y + Math.sin(timer * q.sp + q.ph) * 0.35, q.base.z); q.m.rotation.z = q.rz + Math.sin(timer * q.sp * 0.7 + q.ph) * 0.12; });
+  if (starField) starField.rotation.y += dt * 0.006;
+
+  // Bitbot
+  let lookTarget = null;
+  if (flight) {
+    flight.t += dt / flight.dur; const t = Math.min(1, flight.t);
+    const u = t < 0.85 ? (0.5 - 0.5 * Math.cos(Math.PI * t / 0.85)) * 0.93 : 0.93 + 0.07 * Math.sin(Math.PI / 2 * (t - 0.85) / 0.15);   // quick launch, glide, soft stop
+    bot.position.copy(flight.curve.getPointAt(u));
+    const tan = flight.curve.getTangentAt(Math.min(0.995, Math.max(0.005, u))), dy = angDelta(yaw, yawTo(tan));
+    yaw += dy * Math.min(1, dt * (flight.calm ? 2.5 : 6));
+    const elev = Math.asin(THREE.MathUtils.clamp(tan.y, -1, 1));
+    const stretch = THREE.MathUtils.smoothstep(t, 0.05, 0.22) * (1 - THREE.MathUtils.smoothstep(t, 0.72, 0.9));
+    pitch += ((Math.PI / 2 - elev) * 0.92 * stretch - pitch) * Math.min(1, dt * 5);
+    const spin = (THREE.MathUtils.smoothstep(t, 0.32, 0.6)) * Math.PI * 2 * flight.spinDir;   // barrel roll while fully stretched
+    roll = THREE.MathUtils.clamp(-dy * 5, -0.5, 0.5) * stretch * (flight.calm ? 0.35 : 1) + spin;
+    if (t > 0.74 && !flight.landing) { flight.landing = true; play("Land", 0.5); }
+    if (t >= 1) {
+      const kind = flight.kind; flight = null; roll = 0;
+      if (kind === "respond") arrive();
+      else { play(state === "stuck" ? "Thinking" : "Idle", 0.6); scheduleFailure(5 + Math.random() * 4); }
+    }
+  } else {
+    // heal body language: dip down to gather momentum, then the power pushes him back and up, hands against the aim
+    let pitchT = 0; const hv = stuck >= 0 ? stages[stuck].hover.clone() : null;
+    if (hv && state === "healing") {
+      const away = hv.clone().sub(stages[stuck].center).setY(0).normalize(), out = Math.min(1, (HEAL_TIME - healT) / 0.6);
+      if (healT < CHARGE_T) { const k = THREE.MathUtils.smoothstep(healT, 0, CHARGE_T); hv.y -= 0.32 * k; pitchT = 0.16 * k; }
+      else { const p = healT - CHARGE_T, kick = (1 - Math.exp(-p * 16)) * (0.42 * Math.exp(-p * 1.4) + 0.18) * out;
+        hv.addScaledVector(away, kick * 1.4); hv.y += kick * 0.5 - 0.32 * Math.exp(-p * 10); pitchT = -0.3 * kick;
+        const force = (0.55 + 0.45 * Math.exp(-p * 2.5)) * out;                                   // the power shakes his whole body
+        hv.add(new THREE.Vector3((Math.random() - 0.5) * 0.16, (Math.random() - 0.5) * 0.1, (Math.random() - 0.5) * 0.16).multiplyScalar(force));
+        pitchT += (Math.random() - 0.5) * 0.12 * force; roll += (Math.random() - 0.5) * 0.1 * force; }
+    }
+    pitch += (pitchT - pitch) * Math.min(1, dt * (state === "healing" ? 9 : 5)); roll += (0 - roll) * Math.min(1, dt * 5);
+    if (stuck >= 0 && (state === "reacting" || state === "healing")) {
+      bot.position.lerp(hv, Math.min(1, dt * (state === "healing" ? 9 : 2)));
+      const sy = yawTo(tmp.copy(stages[stuck].center).sub(bot.position).setY(0));
+      yaw += angDelta(yaw, sy + angDelta(sy, camYaw()) * 0.4) * Math.min(1, dt * 3);   // faces the stage, three-quarter to us
+      lookTarget = null;
+    } else {
+      const h = homePose(HOMES[homeIdx], state === "stuck");
+      const lift = 0;
+      bot.position.lerp(tmp.copy(h.pos).add(new THREE.Vector3(0, lift, 0)), Math.min(1, dt * 1.5)); bot.position.y += Math.sin(timer * 1.8) * 0.004;
+      if (state === "stuck") {
+        // ask for help: the body takes ONE angle (a single turn) and then holds it; only the neck moves
+        const toStage = new THREE.Vector3().subVectors(stages[stuck].center, bot.position); toStage.y = 0;
+        if (stuckBodyYaw === null) {
+          const aI = yawTo(toStage), aV = camYaw(), d = angDelta(aI, aV), sd = Math.sign(d) || 1;
+          if (HOMES[homeIdx] === "camera") stuckBodyYaw = homePose("camera", true).yaw;   // one turn to side-on as he drifts in, then it holds
+          else if (Math.abs(d) <= 2 * NECK_YAW) stuckBodyYaw = aI + d / 2;                          // halfway: issue on one side, viewer on the other
+          else stuckBodyYaw = aI + sd * NECK_YAW * 0.9;                                             // issue fully in reach, viewer only sideways
+          stuckBodyYaw = aV + THREE.MathUtils.clamp(angDelta(aV, stuckBodyYaw), -1.1, 1.1);           // never show us his back
+        }
+        yaw += angDelta(yaw, stuckBodyYaw) * Math.min(1, dt * 2);
+        // irregular, natural glances: look at the problem ~4-6 s, then at the viewer for ~2-3 s
+        if (timer >= glance.end && glance.on) { glance.on = false; glance.at = timer + GLANCE_GAPS[glance.i % GLANCE_GAPS.length] + Math.random() * 0.8; glance.i++; }
+        if (!glance.on && timer >= glance.at) { glance.on = true; glance.end = timer + GLANCE_HOLDS[glance.i % GLANCE_HOLDS.length] + Math.random() * 0.5; }
+        const toViewer = glance.on;
+        viewerBlend += ((toViewer ? 1 : 0) - viewerBlend) * Math.min(1, dt * 3);
+        play("Thinking", 0.45);                                                                    // hand stays at the helmet, no waving
+        neckTarget = toViewer ? "viewer" : "issue";
+      } else { yaw += angDelta(yaw, h.yaw) * Math.min(1, dt * 2); viewerBlend += (0 - viewerBlend) * Math.min(1, dt * 3); neckTarget = null; stuckBodyYaw = null; }
+
+    }
+  }
+  bodyLean += ((neckTarget && !flight ? bodyLeanTarget : 0) - bodyLean) * Math.min(1, dt * 2.5);
+  bot.rotation.set(0, 0, 0); bot.rotateY(yaw); bot.rotateX(pitch - bodyLean * 0.6); bot.rotateY(roll);
+  if (mouth) mouth.scale.y = mouthScaleY * (state === "stuck" || state === "reacting" ? -1 : 1);   // frown while there is a problem
+  {
+    // neck: rotate the head (on top of the animation) so its face points at the issue or the viewer
+    let want = 0;
+    if (state !== "stuck" || stuck < 0) neckTarget = null;   // nothing to look at once the stage is healed
+    if (neckTarget && headBone && !flight) {
+      bot.updateMatrixWorld(true);
+      const hp = headBone.getWorldPosition(new THREE.Vector3()), hq = headBone.getWorldQuaternion(new THREE.Quaternion());
+      const face = new THREE.Vector3(0, 0, 1).applyQuaternion(hq);
+      const tgt = (neckTarget === "issue" ? stages[stuck].center : camera.position).clone().sub(hp).normalize();
+      const mayLookUp = neckTarget === "viewer" && HOMES[homeIdx] === "camera";
+      const tEl = Math.asin(THREE.MathUtils.clamp(tgt.y, -1, 1)), tAz = Math.atan2(tgt.x, tgt.z);
+      const atCam = HOMES[homeIdx] === "camera";   // issue is behind him: only a level look over the shoulder, never dropping his face away from us
+      if (neckTarget === "issue") bodyLeanTarget = atCam ? 0 : THREE.MathUtils.clamp(tEl + NECK_DOWN * 0.7, -0.35, 0);   // lean only for what the neck can't reach
+      let el = THREE.MathUtils.clamp(tEl - bodyLean, atCam && neckTarget === "issue" ? -0.12 : -NECK_DOWN, mayLookUp ? NECK_UP : 0);
+      const ny = atCam && neckTarget === "viewer" ? 1.5 : NECK_YAW;   // side-on at the camera spot: he turns his head right round to us
+      let az = yaw + THREE.MathUtils.clamp(angDelta(yaw, tAz), -ny, ny);
+      const desired = new THREE.Vector3(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
+      // full head orientation that faces `desired` with no sideways roll
+      const xr = new THREE.Vector3(0, 1, 0).cross(desired).normalize(), yu = desired.clone().cross(xr).normalize();
+      const qT = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(xr, yu, desired));
+      neckFix.slerp(qT.multiply(hq.clone().invert()), Math.min(1, dt * 2.2));
+      want = 1;
+    }
+    neckAmt += (want - neckAmt) * Math.min(1, dt * 3);
+    if (headBone && neckAmt > 1e-3) {
+      bot.updateMatrixWorld(true);
+      const pq = headBone.parent.getWorldQuaternion(new THREE.Quaternion()), hq = headBone.getWorldQuaternion(new THREE.Quaternion());
+      const fix = new THREE.Quaternion().slerp(neckFix, neckAmt);
+      headBone.quaternion.copy(pq.invert().multiply(fix.multiply(hq)));
+    }
+  }
+  beams.forEach(m => { m.uniforms.time.value = timer; m.uniforms.power.value += ((flight ? 1.0 : 0.35) - m.uniforms.power.value) * Math.min(1, dt * 3); });
+
+  // big purple healing flame from both hands; the hands shake with the power
+  if (state === "healing") {
+    const s = stages[stuck], to = s.center.clone().add(new THREE.Vector3(0, 0.22, 0));
+    const fade = THREE.MathUtils.clamp((healT - CHARGE_T) / 0.12, 0, 1) * Math.min(1, (HEAL_TIME - healT) / 0.45);   // bursts out after the wind-up
+    foreBones.forEach((fb, k) => { if (fb) fb.quaternion.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler((Math.random() - 0.5) * 0.12 * fade, (Math.random() - 0.5) * 0.08 * fade, (Math.random() - 0.5) * 0.12 * fade))); });
+    bot.updateMatrixWorld(true);
+    handBones.forEach((hb, k) => {
+      const from = hb ? hb.getWorldPosition(new THREE.Vector3()) : bot.position.clone().add(new THREE.Vector3(k ? 0.3 : -0.3, 0.4, 0));
+      const tgt = to.clone().add(new THREE.Vector3(k ? 0.25 : -0.25, 0, 0)), len = from.distanceTo(tgt);
+      const m = handFlames[k]; m.visible = true; m.position.copy(from).lerp(tgt, 0.5); m.scale.set(1.3 + 0.25 * Math.sin(timer * 23 + k), len, 1.3 + 0.25 * Math.cos(timer * 19 + k));   // thicker, more violent flame
+      m.quaternion.setFromUnitVectors(up, from.clone().sub(tgt).normalize());
+      m.material.uniforms.time.value = timer; m.material.uniforms.power.value = fade;
+      handGlows[k].position.copy(from); handGlows[k].material.opacity = fade * (0.8 + 0.2 * Math.sin(timer * 30 + k)); handGlows[k].scale.setScalar(1.0 + 0.35 * Math.sin(timer * 17 + k));
+    });
+    beam.visible = false; core.visible = false;
+    spv.forEach((q2, i) => {
+      q2.life -= dt;
+      if (q2.life <= 0) { q2.life = 0.4 + Math.random() * 0.8; q2.o.copy(s.center).add(new THREE.Vector3((Math.random() - 0.5) * 2.2, 0.2, (Math.random() - 0.5) * 1.3)); q2.v.set((Math.random() - 0.5) * 1.2, 1.2 + Math.random() * 2.2, (Math.random() - 0.5) * 1.2); }
+      q2.o.addScaledVector(q2.v, dt); sp.set([q2.o.x, q2.o.y, q2.o.z], i * 3);
+    });
+    sparkGeo.attributes.position.needsUpdate = true; sparks.visible = true;
+  } else { beam.visible = false; core.visible = false; sparks.visible = false; handFlames.forEach(m => m.visible = false); handGlows.forEach(g => g.material.opacity = 0); }
+}
+window.__dbg = () => { bot.updateMatrixWorld(true); const hp = headBone.getWorldPosition(new THREE.Vector3()); const hq = headBone.getWorldQuaternion(new THREE.Quaternion()); const axes = [[1,0,0],[0,1,0],[0,0,1],[0,0,-1]].map(a => new THREE.Vector3(...a).applyQuaternion(hq).dot(camera.position.clone().sub(hp).normalize()).toFixed(2)); const fz = new THREE.Vector3(0,0,1).applyQuaternion(hq); const tgtD = (neckTarget === 'issue' && stuck >= 0 ? stages[stuck].center : camera.position).clone().sub(hp).normalize(); return { faceToTarget: fz.dot(tgtD).toFixed(2), faceElev: Math.asin(fz.y).toFixed(2), tgtElev: Math.asin(tgtD.y).toFixed(2), axes, neckYaw, neckPitch, neckTarget, bodyYaw: yaw, stuckBodyYaw, state,  yaw, pitch, headYaw, homeYaw: homePose(HOMES[homeIdx]).yaw, camYaw: camYaw(), botQ: bot.quaternion.toArray(), cam: camera.position.toArray().map(v=>+v.toFixed(2)), bot: bot && bot.position.toArray().map(v=>+v.toFixed(2)), root: trackRoot && trackRoot.position.toArray(), center: trackCenter.toArray(), radius: trackRadius, fov: camera.fov, look: look.toArray() }; };
+window.__simulate = (sec, clickAt) => { const all = new URLSearchParams(location.search).has("allclick"); let clicked = false; for (let t = 0; t < sec; t += 1 / 30) { step(1 / 30); if (clickAt && (!clicked || all) && t >= clickAt && state === "stuck" && timer - stuckSince > 1) { respond(); clicked = true; } } };   // ?allclick: answer every failure (test a full run)
+</script>
+
+</body>
+</html>

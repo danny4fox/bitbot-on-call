@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>15 Days Off?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one-screen spit-take hero (PurrCat chokes on her coffee at "15 days off?"), then the claim card, then the five fixes that earned it.
+   Single brand-purple look on purpose, matching the Bitbot On Call game. */
+@font-face { font-family: "TT Norms Pro"; src: url("fonts/TTNormsPro-Regular.otf") format("opentype"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "TT Norms Pro"; src: url("fonts/TTNormsPro-Medium.otf") format("opentype"); font-weight: 500; font-display: swap; }
+@font-face { font-family: "TT Norms Pro"; src: url("fonts/TTNormsPro-Bold.otf") format("opentype"); font-weight: 700; font-display: swap; }
+:root {
+  --night: #3D125F;        /* brand deep purple, page ground */
+  --violet: #500E82;       /* primary buttons */
+  --violet-2: #6A3C98;     /* hover, secondary text on light */
+  --lilac: #DEB4FF;        /* muted text on dark */
+  --mist: #F6EAFF;         /* card surface */
+  --rose: #FF9CD8;         /* gradient partner (no green) */
+  --rose-deep: #E5113C;    /* sparing accent */
+  --coffee: #8A5A3C;
+  --ink: #FFFFFF;
+  --font-display: "TT Norms Pro", "Avenir Next", system-ui, sans-serif;
+  --font-body: "TT Norms Pro", "Avenir Next", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--night); color: var(--ink); font: 400 17px/1.55 var(--font-body); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-inline: 24px; }
+a { color: inherit; }
+
+/* hero */
+.hero { position: relative; overflow: hidden; padding-block: 56px 40px;
+  background: radial-gradient(120% 90% at 85% 10%, rgba(255, 156, 216, .28), transparent 55%), radial-gradient(90% 80% at 0% 100%, rgba(106, 60, 152, .55), transparent 60%), var(--night); }
+.hero .wrap { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 32px; align-items: center; }
+.brand { display: flex; align-items: center; gap: 8px; font: 700 18px/1 var(--font-body); margin-bottom: 40px; }
+.brand svg { width: 26px; height: 21px; }
+.eyebrow { font: 500 13px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--lilac); margin: 0 0 14px; }
+h1 { margin: 0; font: 700 clamp(56px, 9vw, 120px)/.92 var(--font-display); letter-spacing: -0.035em; text-wrap: balance; }
+h1 .q { background: linear-gradient(95deg, #FFFFFF 10%, var(--rose) 70%, #FF6FB8); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.lede { margin: 22px 0 0; max-width: 34ch; font-size: clamp(18px, 1.6vw, 21px); color: #EBDDF8; }
+.lede b { color: #FFFFFF; font-weight: 700; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+.btn { display: inline-flex; align-items: center; justify-content: center; font: 700 16px/1 var(--font-body); padding: 16px 22px; border-radius: 12px; text-decoration: none; border: 0; cursor: pointer; transition: background .15s, transform .15s; }
+.btn-primary { background: var(--violet); color: #FFFFFF; box-shadow: 0 0 0 1px rgba(255,255,255,.18) inset; animation: glow 2.4s ease-in-out infinite; }
+.btn-primary:hover { background: var(--violet-2); transform: translateY(-1px); }
+.btn-ghost { background: transparent; color: #FFFFFF; box-shadow: 0 0 0 1.5px rgba(222, 180, 255, .55) inset; }
+.btn-ghost:hover { background: rgba(255, 255, 255, .06); }
+.btn:focus-visible { outline: 3px solid var(--rose); outline-offset: 3px; }
+@keyframes glow { 0%, 100% { box-shadow: 0 0 0 1px rgba(255,255,255,.18) inset, 0 0 0 0 rgba(136, 227, 255, 0); } 50% { box-shadow: 0 0 0 1px rgba(255,255,255,.18) inset, 0 0 24px 6px rgba(136, 227, 255, .6); } }
+
+/* the spit-take */
+.scene { position: relative; aspect-ratio: 1 / .78; max-width: 100%; }
+.bubble { position: absolute; left: 30%; top: 0; background: #FFFFFF; color: var(--night); font: 700 clamp(22px, 2.6vw, 30px)/1 var(--font-display); letter-spacing: -0.01em; padding: 14px 18px; border-radius: 18px 18px 18px 4px; box-shadow: 0 12px 24px rgba(20, 4, 36, .35); transform-origin: 0 100%; animation: bubble 4.2s ease-in-out infinite; }
+.bubble small { display: block; font: 500 11px/1.4 var(--font-mono); letter-spacing: .06em; color: var(--violet-2); text-transform: uppercase; margin-bottom: 4px; }
+@keyframes bubble { 0%, 50% { transform: scale(1); } 54% { transform: scale(1.14) rotate(-3deg); } 60%, 100% { transform: scale(1); } }
+.cat { position: absolute; left: 0; bottom: 6%; width: 74%; height: auto; overflow: visible; filter: drop-shadow(0 20px 22px rgba(20, 4, 36, .5)); animation: jolt 4.2s cubic-bezier(.3, 1.6, .4, 1) infinite; transform-origin: 70% 90%; }
+@keyframes jolt { 0%, 50% { transform: none; } 53% { transform: translate(-2%, -4%) rotate(-5deg); } 59% { transform: none; } 66% { transform: translateY(-1.2%) rotate(-1deg); } 71% { transform: none; } 77% { transform: translateY(-1.2%) rotate(-1deg); } 82%, 84% { transform: none; } 88% { transform: translateY(-7%) scale(1.02, .98); } 92% { transform: translateY(0) scale(1.03, .96); } 95%, 100% { transform: none; } }   /* jolt at the spit, giggles, then a happy hop once the paw is back down */
+.mug { position: absolute; left: 64%; bottom: 40%; width: 11%; aspect-ratio: 1 / 1; animation: mug 4.2s ease-in-out infinite; transform-origin: 20% 80%; }
+.mug svg { width: 100%; height: 100%; overflow: visible; }
+@keyframes mug { 0%, 30% { transform: rotate(-28deg); } 36%, 56% { transform: rotate(8deg) translate(4%, 6%); } 70%, 100% { transform: rotate(-28deg); } }
+.spray { position: absolute; left: 64%; bottom: 29%; width: 30%; height: 40%; pointer-events: none; }
+.spray i { position: absolute; left: 0; top: 50%; width: 10px; height: 10px; border-radius: 50%; background: var(--coffee); opacity: 0; animation: spray 4.2s ease-out infinite; }
+.spray i:nth-child(3n) { background: #C08A62; width: 7px; height: 7px; } .spray i:nth-child(4n) { background: #F6EAFF; width: 6px; height: 6px; }
+@keyframes spray { 0%, 50.5% { opacity: 0; transform: translate(0, 0) scale(.4); } 52% { opacity: 1; } 69% { opacity: 1; } 81%, 100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(1); } }
+.hero-note { margin-top: 18px; font: 400 13px/1.4 var(--font-mono); color: var(--lilac); }
+
+/* claim card */
+.claim { padding-block: 24px 40px; }
+.card { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 28px; padding: 28px 32px; border-radius: 24px; color: var(--night);
+  background: linear-gradient(110deg, #FFFFFF 0%, var(--mist) 55%, #FFD0EC 100%); box-shadow: 0 24px 60px rgba(20, 4, 36, .45); }
+.card img { width: 104px; height: 104px; object-fit: contain; filter: drop-shadow(0 10px 10px rgba(61, 18, 95, .3)); }
+.card h2 { margin: 0; font: 700 clamp(26px, 3vw, 34px)/1.1 var(--font-display); letter-spacing: -0.02em; text-wrap: balance; }
+.card p { margin: 6px 0 0; color: var(--violet-2); max-width: 52ch; }
+.card .code { display: inline-flex; align-items: center; gap: 10px; margin-top: 12px; font: 500 14px/1 var(--font-mono); background: #FFFFFF; border: 1.5px dashed #C9A6EE; border-radius: 10px; padding: 8px 8px 8px 12px; color: var(--night); }
+.card .code button { font: 700 12px/1 var(--font-body); background: var(--mist); color: var(--violet); border: 0; border-radius: 7px; padding: 7px 10px; cursor: pointer; }
+.card .code button:focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; }
+
+/* the five fixes */
+.fixes { padding-block: 24px 64px; }
+.fixes h3 { margin: 0 0 18px; font: 700 22px/1.2 var(--font-display); }
+.grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.fix { padding: 16px; border-radius: 16px; background: rgba(255, 255, 255, .06); box-shadow: 0 0 0 1px rgba(222, 180, 255, .18) inset; min-width: 0; }
+.fix .stage { font: 500 11px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--rose); }
+.fix b { display: block; margin-top: 8px; font: 700 16px/1.25 var(--font-display); }
+.fix span { display: block; margin-top: 6px; font-size: 14px; line-height: 1.45; color: var(--lilac); }
+.fine { margin-top: 28px; font-size: 13px; color: #B99AD6; max-width: 80ch; }
+
+@media (max-width: 900px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .card { grid-template-columns: minmax(0, 1fr); text-align: left; } .card img { width: 80px; height: 80px; } }
+@media (max-width: 760px) { .hero .wrap { grid-template-columns: minmax(0, 1fr); } .scene { max-width: 460px; } .brand { margin-bottom: 28px; } }
+@media (max-width: 420px) { .wrap { padding-inline: 16px; } .grid { grid-template-columns: minmax(0, 1fr); } .card { padding: 22px 20px; } }
+@media (prefers-reduced-motion: reduce) { .btn-primary, .bubble, .cat, .mug, .spray i { animation: none; } .bubble { opacity: 1; transform: none; } .spray { display: none; } }
+
+/* fix cards with articles */
+.fixes .sub { margin: -8px 0 18px; color: var(--lilac); }
+.fix { display: flex; flex-direction: column; gap: 0; }
+.fix .did { flex: 0 0 auto; }
+.fix .read { display: block; margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(222, 180, 255, .18); text-decoration: none; font: 500 14px/1.4 var(--font-body); color: #FFFFFF; }
+.fix .read small { display: block; font: 500 10px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--lilac); margin-bottom: 6px; }
+.fix .read:hover { color: var(--rose); }
+.fix .more { margin-top: auto; padding-top: 14px; font: 700 13px/1.3 var(--font-body); color: var(--rose); text-decoration: none; }
+.fix .more:hover { text-decoration: underline; }
+.fix a:focus-visible, .links a:focus-visible, .learn-grid a:focus-visible { outline: 2px solid var(--rose); outline-offset: 3px; border-radius: 4px; }
+/* who we are */
+.who { padding-block: 40px; }
+.who-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; align-items: center; }
+.who h3 { margin: 0 0 14px; font: 700 clamp(26px, 3vw, 36px)/1.12 var(--font-display); letter-spacing: -0.02em; text-wrap: balance; }
+.who-text > p { margin: 0; color: #EBDDF8; max-width: 58ch; }
+.founders { list-style: none; padding: 0; margin: 20px 0; display: flex; flex-wrap: wrap; gap: 10px; }
+.founders li { padding: 10px 14px; border-radius: 12px; background: rgba(255,255,255,.06); box-shadow: 0 0 0 1px rgba(222,180,255,.18) inset; }
+.founders b { display: block; font-weight: 700; } .founders span { font-size: 13px; color: var(--lilac); }
+.links { display: grid; gap: 8px; } .links a { color: var(--rose); text-decoration: none; font-weight: 500; } .links a:hover { text-decoration: underline; }
+.interview { margin: 0; }
+.video { position: relative; aspect-ratio: 16 / 9; max-width: 100%; border-radius: 20px; overflow: hidden; background: radial-gradient(80% 80% at 70% 30%, rgba(255,156,216,.35), transparent 60%), linear-gradient(135deg, #500E82, #3D125F); box-shadow: 0 20px 50px rgba(20,4,36,.45); }
+.video img { position: absolute; right: -6%; bottom: -18%; width: 62%; opacity: .9; }
+.play { position: absolute; left: 50%; top: 50%; width: 72px; height: 72px; margin: -36px 0 0 -36px; border-radius: 50%; background: rgba(255,255,255,.95); box-shadow: 0 10px 24px rgba(20,4,36,.4); }
+.play::after { content: ""; position: absolute; left: 29px; top: 22px; border-left: 20px solid var(--violet); border-top: 14px solid transparent; border-bottom: 14px solid transparent; }
+.interview figcaption { margin-top: 12px; display: grid; gap: 2px; } .interview figcaption span { color: var(--lilac); font-size: 15px; }
+/* learn more */
+.learn { padding-block: 24px 40px; } .learn h3 { margin: 0 0 18px; font: 700 22px/1.2 var(--font-display); }
+.learn-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.learn-grid a { display: grid; gap: 6px; padding: 18px; border-radius: 16px; text-decoration: none; background: rgba(255,255,255,.06); box-shadow: 0 0 0 1px rgba(222,180,255,.18) inset; transition: background .15s; min-width: 0; }
+.learn-grid a:hover { background: rgba(255,255,255,.1); } .learn-grid b { font: 700 16px/1.25 var(--font-display); } .learn-grid span { font-size: 14px; color: var(--lilac); }
+/* newsletter */
+.subscribe { padding-block: 24px 40px; }
+.sub-card { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 24px; align-items: end; padding: 28px 32px; border-radius: 24px; color: var(--night); background: linear-gradient(110deg, #FFFFFF 0%, var(--mist) 55%, #FFD0EC 100%); scroll-margin-top: 24px; }
+.sub-card h3 { margin: 0; font: 700 clamp(22px, 2.6vw, 28px)/1.15 var(--font-display); letter-spacing: -0.015em; text-wrap: balance; }
+.sub-card > div > p { margin: 6px 0 0; color: var(--violet-2); }
+.topics { border: 0; padding: 0; margin: 14px 0 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.topics label { display: inline-flex; align-items: center; gap: 6px; padding: 7px 11px; border-radius: 999px; background: #FFFFFF; box-shadow: 0 0 0 1px #E6D3F7 inset; font: 500 13px/1 var(--font-body); color: var(--night); cursor: pointer; }
+.topics input { accent-color: var(--violet); margin: 0; }
+.sub-row { display: flex; gap: 10px; }
+.sub-row input { flex: 1; min-width: 0; font: 400 16px var(--font-body); padding: 14px 14px; border-radius: 12px; border: 1.5px solid #DCC4F8; background: #FFFFFF; color: var(--night); }
+.sub-row input:focus-visible { outline: 3px solid var(--rose); outline-offset: 1px; }
+.sub-msg { grid-column: 1 / -1; margin: 0; min-height: 1.4em; font-size: 14px; color: var(--violet-2); }
+.sub-card.flash { animation: flash 1s ease-out; } @keyframes flash { 30% { box-shadow: 0 0 0 4px var(--rose); } }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+/* play again */
+.again { padding-block: 16px 56px; } .again-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; padding-block: 22px; border-top: 1px solid rgba(222,180,255,.18); }
+.again-row p { margin: 0; font-size: 18px; color: #EBDDF8; } .again-row b { color: #FFFFFF; }
+@media (max-width: 900px) { .who-grid, .sub-card { grid-template-columns: minmax(0, 1fr); } .learn-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 420px) { .learn-grid { grid-template-columns: minmax(0, 1fr); } .sub-row { flex-direction: column; } .sub-card { padding: 22px 20px; } }
+
+/* lighter, less text-dense layout below the hero */
+.fix { padding: 18px; } .fix b { font-size: 17px; } .fix .read { margin-top: 12px; }
+.learn-grid a { padding: 18px 20px; } .learn-grid b { font-size: 17px; }
+.who-text > p { font-size: 18px; }
+
+/* who we are: one spacing rhythm (eyebrow 10, headline 18, text 28, founders 22) instead of stacked margins */
+.who-text { display: flex; flex-direction: column; align-items: flex-start; }
+.who-text > * { margin: 0 !important; }
+.who-text .eyebrow { margin-bottom: 10px !important; }
+.who-text h3 { margin-bottom: 18px !important; }
+.who-text > p { margin-bottom: 28px !important; }
+.who-text .founders { margin-bottom: 22px !important; }
+
+/* fix badges: a playful title per fix */
+.badge { padding: 20px 18px; border-radius: 18px; text-align: left; min-width: 0;
+  background: linear-gradient(160deg, rgba(255,156,216,.18), rgba(255,255,255,.04) 60%); box-shadow: 0 0 0 1px rgba(255,156,216,.3) inset; }
+.badge .stage { font: 500 11px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--rose); }
+.badge b { display: block; margin-top: 10px; font: 700 20px/1.15 var(--font-display); letter-spacing: -0.01em; text-wrap: balance; }
+.badge .did { display: block; margin-top: 8px; font-size: 14px; line-height: 1.45; color: var(--lilac); }
+/* what our team thinks: article cards with author faces */
+.team { padding-block: 8px 40px; } .team h3 { margin: 0 0 6px; font: 700 22px/1.2 var(--font-display); } .team .sub { margin: 0 0 18px; color: var(--lilac); }
+.posts { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.post { display: flex; flex-direction: column; gap: 14px; padding: 18px; border-radius: 18px; background: #FFFFFF; color: var(--night); min-width: 0; box-shadow: 0 14px 30px rgba(20,4,36,.3); }
+.author { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.face { position: relative; flex: none; width: 44px; height: 44px; border-radius: 50%; overflow: hidden; background: linear-gradient(135deg, var(--rose), var(--violet-2)); box-shadow: 0 0 0 2px #FFFFFF, 0 0 0 4px #EBDDF8; }
+.face::before { content: attr(data-i); position: absolute; inset: 0; display: grid; place-items: center; font: 700 15px var(--font-display); color: #FFFFFF; }
+.face img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.author b { display: block; font-size: 14px; line-height: 1.2; } .author span { display: block; font-size: 12px; line-height: 1.3; color: var(--violet-2); }
+.post-title { font: 700 16px/1.3 var(--font-display); color: var(--night); text-decoration: none; text-wrap: balance; }
+.post-title:hover { color: var(--violet-2); text-decoration: underline; }
+.post-foot { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.post .tag { font: 500 10px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--violet); background: var(--mist); padding: 5px 7px; border-radius: 6px; }
+.post .more { font: 700 13px/1.3 var(--font-body); color: var(--violet); text-decoration: none; } .post .more:hover { text-decoration: underline; }
+.post a:focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; border-radius: 4px; }
+@media (max-width: 1000px) { .posts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 420px) { .posts { grid-template-columns: minmax(0, 1fr); } }
+</style>
+
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <div>
+      <div class="brand"><svg viewBox="0 0 20 16" aria-hidden="true"><rect x="1" y="3" width="18" height="12" rx="4" fill="none" stroke="#fff" stroke-width="1.8"/><path d="M10 0v3" stroke="#fff" stroke-width="1.8"/><circle cx="7" cy="9" r="1.2" fill="#fff"/><circle cx="13" cy="9" r="1.2" fill="#fff"/></svg>bitrise</div>
+      <p class="eyebrow">Bitbot On Call &middot; run complete</p>
+      <h1><span class="q">15 days off?</span></h1>
+      <p class="lede">Yes, really. You fixed all <b>5 stuck stages</b>, so you get <b>15 days of full access to Bitrise, free</b>. Every product, no limits.</p>
+      <div class="actions">
+        <a class="btn btn-primary" id="claimBtn" href="https://bitrise.io/" target="_blank" rel="noopener">Claim 15 days free</a>
+        <a class="btn btn-ghost" href="#fixes">See what you fixed</a>
+      </div>
+      <p class="hero-note">Full access to every Bitrise product for 15 days.</p>
+    </div>
+    <div class="scene" aria-label="PurrCat laughs and spits out her coffee">
+      <div class="bubble"><small>PurrCat</small>15 days off?!</div>
+      <svg class="cat" aria-hidden="true" focusable="false" viewBox="0 0 234 163" fill="none" xmlns="http://www.w3.org/2000/svg"><style>
+.tail{transform-box:view-box;transform-origin:72px 66px;animation:wag 1.6s ease-in-out infinite}
+@keyframes wag{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(9deg)}}
+
+
+@media (prefers-reduced-motion:reduce){.tail,.eye,.mouth{animation:none}}
+.calm{opacity:0;animation:calmF 4.2s steps(1) infinite}.yuck{opacity:0;animation:yuckF 4.2s steps(1) infinite}.lol{animation:lolF 4.2s steps(1) infinite}.dizzy{opacity:0;animation:dizzyF 4.2s steps(1) infinite}@keyframes dizzyF{0%{opacity:0}86%{opacity:1}91%{opacity:0}}@keyframes calmF{0%{opacity:0}21%{opacity:1}51%{opacity:0}}@keyframes yuckF{0%{opacity:0}51%{opacity:1}62%{opacity:0}}@keyframes lolF{0%{opacity:1}21%{opacity:0}62%{opacity:1}86%{opacity:0}91%{opacity:1}}@media (prefers-reduced-motion:reduce){.calm,.yuck,.dizzy{animation:none;opacity:0}.lol{animation:none;opacity:1}}.paw{transform-box:view-box;transform-origin:171px 102px;animation:paw 4.2s ease-in-out infinite}@keyframes paw{0%,6%{transform:rotate(-20deg)}21%,51%{transform:rotate(-124deg)}54%{transform:rotate(-100deg)}71%{transform:rotate(-40deg)}81%,100%{transform:rotate(-20deg)}}@media (prefers-reduced-motion:reduce){.paw{animation:none;transform:rotate(-20deg)}}</style>
+<path d="M137.663 136.621V118.721H123.693V126.441L121.363 134.231C121.143 134.961 121.693 135.701 122.453 135.701H123.683V142.401C123.683 146.801 127.253 150.371 131.653 150.371H137.233C140.863 150.371 143.953 147.401 143.853 143.781C143.753 140.181 141.113 137.221 137.663 136.631V136.621Z" fill-rule="evenodd" clip-rule="evenodd" fill="url(#paint0_linear_20_9587)"/>
+<path d="M139.434 122.2H121.664C119.304 122.2 117.384 120.28 117.384 117.92V97.6605C117.384 89.6905 123.844 83.2305 131.814 83.2305C140.694 83.2305 147.474 91.1805 146.064 99.9505L143.634 118.69C143.264 120.73 141.494 122.21 139.424 122.21L139.434 122.2Z" fill="url(#paint1_linear_20_9587)"/>
+<mask id="mask0_20_9587" style="mask-type:luminance" maskUnits="userSpaceOnUse" x="117" y="83" width="30" height="40">
+<path d="M139.434 122.2H121.664C119.304 122.2 117.384 120.28 117.384 117.92V97.6605C117.384 89.6905 123.844 83.2305 131.814 83.2305C140.694 83.2305 147.474 91.1805 146.064 99.9505L143.634 118.69C143.264 120.73 141.494 122.21 139.424 122.21L139.434 122.2Z" fill="white"/>
+</mask>
+<g mask="url(#mask0_20_9587)">
+<path d="M155.363 109.25H108.943V124.83H155.363V109.25Z" fill="black"/>
+</g>
+<path d="M205.154 136.871V118.971H191.184V126.691L188.854 134.481C188.634 135.211 189.184 135.951 189.944 135.951H191.174V142.651C191.174 147.051 194.744 150.621 199.144 150.621H204.724C208.354 150.621 211.444 147.651 211.344 144.031C211.244 140.431 208.604 137.471 205.154 136.881V136.871Z" fill-rule="evenodd" clip-rule="evenodd" fill="url(#paint2_linear_20_9587)"/>
+<path d="M206.453 122.46H188.973C186.723 122.46 184.903 120.64 184.903 118.39V99.8998C184.903 92.8198 190.643 87.0898 197.713 87.0898C204.793 87.0898 210.523 92.8298 210.523 99.8998V118.39C210.523 120.64 208.703 122.46 206.453 122.46Z" fill="url(#paint3_linear_20_9587)"/>
+<mask id="mask1_20_9587" style="mask-type:luminance" maskUnits="userSpaceOnUse" x="184" y="87" width="27" height="36">
+<path d="M206.453 122.46H188.973C186.723 122.46 184.903 120.64 184.903 118.39V99.8998C184.903 92.8198 190.643 87.0898 197.713 87.0898C204.793 87.0898 210.523 92.8298 210.523 99.8998V118.39C210.523 120.64 208.703 122.46 206.453 122.46Z" fill="white"/>
+</mask>
+<g mask="url(#mask1_20_9587)">
+<path d="M223.104 110.891H176.684V126.471H223.104V110.891Z" fill="black"/>
+</g>
+<g class="tail"><path d="M94.8135 80.5602C94.8135 80.5602 89.0435 74.2302 82.8335 69.9002C79.6435 67.6802 76.2935 66.0202 73.4035 65.4802C63.3635 63.6002 55.9235 66.5502 48.9135 70.0502C43.8435 72.5802 39.1635 75.6502 33.0435 75.3302C16.7435 74.4602 10.9935 64.2802 10.9935 64.2802C9.51349 61.4302 5.99349 60.3102 3.14349 61.7902C0.293491 63.2702 -0.826509 66.7902 0.653491 69.6402C0.653491 69.6402 1.98349 72.3502 5.20349 75.6302L3.31349 76.2802C2.88349 76.4302 2.85349 77.0302 3.26349 77.2202L14.9435 82.6302C19.4635 84.8602 25.2035 86.5902 32.4135 86.9702C39.2535 87.3302 44.9435 85.0702 50.5535 82.2802C56.5935 79.2702 62.4935 75.3002 71.2435 76.9402C73.4435 77.3502 75.9435 79.2002 78.2835 81.0502C82.6035 84.4702 86.1835 88.4002 86.1835 88.4002C88.3435 90.7802 92.0335 90.9502 94.4135 88.7902C96.7935 86.6302 96.9635 82.9402 94.8035 80.5602H94.8135Z" fill-rule="evenodd" clip-rule="evenodd" fill="url(#paint4_linear_20_9587)"/></g>
+<path d="M116.732 41.7595L127.702 41.7195C135.872 41.6595 143.672 45.1095 149.112 51.2095L162.692 66.4195V71.7595L116.932 71.6995L116.732 41.7595Z" fill="url(#paint5_linear_20_9587)"/>
+<path d="M118.833 41.7188H112.613V56.8487H118.833V41.7188Z" fill="url(#paint6_linear_20_9587)"/>
+<path d="M107.923 56.8587H112.613V41.7188L107.923 45.8187V56.8587Z" fill-rule="evenodd" clip-rule="evenodd" fill="url(#paint7_linear_20_9587)"/>
+<path d="M115.053 52.7987L124.763 52.7587C131.993 52.6987 138.893 55.7587 143.703 61.1487L155.723 74.6087V79.3287L115.243 79.2787L115.063 52.7987H115.053Z" fill="url(#paint8_linear_20_9587)"/>
+<path d="M118.833 52.7988H107.923V79.3388H118.833V52.7988Z" fill="url(#paint9_linear_20_9587)"/>
+<path d="M99.7031 79.3388H107.923V52.7988L99.7031 59.9888V79.3388Z" fill-rule="evenodd" clip-rule="evenodd" fill="url(#paint10_linear_20_9587)"/>
+<path d="M128.173 78.0797H131.823L131.833 65.9297L128.183 68.9597L128.173 78.0797Z" fill-rule="evenodd" clip-rule="evenodd" fill="url(#paint11_linear_20_9587)"/>
+<path d="M173.173 65.9799L131.843 65.9199V75.6499L182.883 75.7199C182.883 70.3499 178.543 65.9899 173.173 65.9799Z" fill-rule="evenodd" clip-rule="evenodd" fill="url(#paint12_linear_20_9587)"/>
+<path d="M221.993 50.3898L223.053 50.1598C224.473 49.8598 225.243 48.2998 224.623 46.9898L220.633 38.5798C220.553 38.3798 220.443 38.1898 220.353 37.9998L220.293 37.8698C219.873 36.9898 219.373 36.1598 218.793 35.3898L219.053 23.5098C219.103 21.2298 216.433 19.9498 214.693 21.4398L205.743 29.0598H180.633L171.683 21.4398C169.943 19.9598 167.273 21.2298 167.323 23.5098L167.583 35.3898C167.003 36.1698 166.503 37.0098 166.073 37.8998V37.8798L161.733 47.0098C161.113 48.3298 161.873 49.8798 163.303 50.1798L164.363 50.4098L163.203 52.8598C162.863 53.5798 163.283 54.4298 164.053 54.5898L164.533 54.6898V54.8298C164.533 64.5298 172.403 72.3998 182.103 72.3998H204.273C213.973 72.3998 221.843 64.5298 221.843 54.8298V54.6798L222.303 54.5798C223.083 54.4098 223.503 53.5698 223.153 52.8498L221.993 50.3998V50.3898Z" fill-rule="evenodd" clip-rule="evenodd" fill="url(#paint13_linear_20_9587)"/>
+<g class="calm"><path d="M178.5 47.5 Q182 50 185.5 47.5" fill="none" stroke="#1D1D1B" stroke-width="2.4" stroke-linecap="round"/><path d="M200.5 47 Q204 49.5 207.5 47" fill="none" stroke="#1D1D1B" stroke-width="2.4" stroke-linecap="round"/><ellipse cx="204.5" cy="57" rx="3.4" ry="2.6" fill="#1D1D1B"/><ellipse cx="205.2" cy="56.6" rx="1.4" ry="1" fill="#FF9CD8"/></g><g class="yuck"><path d="M178 44.5 L185.5 48 L178 51.5" fill="none" stroke="#1D1D1B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M208 44 L200.5 47.5 L208 51" fill="none" stroke="#1D1D1B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M189 58 Q192 55 195 58 T201 58 T207 57" fill="none" stroke="#1D1D1B" stroke-width="2.4" stroke-linecap="round"/><path d="M195.5 58.5 Q198 58 200.5 58.5 L200 63 Q198 65.5 196 63 Z" fill="#FF9CD8" stroke="#1D1D1B" stroke-width="1.2"/></g><g class="dizzy"><circle cx="182" cy="47" r="4.6" fill="#FFFFFF" stroke="#1D1D1B" stroke-width="1.6"/><circle cx="184.6" cy="47.8" r="2.1" fill="#1D1D1B"/><circle cx="204" cy="46.6" r="4.6" fill="#FFFFFF" stroke="#1D1D1B" stroke-width="1.6"/><circle cx="201.4" cy="47.4" r="2.1" fill="#1D1D1B"/><path d="M189.5 54.5 Q198 56 206.5 53.5 Q206 64 198 64.5 Q190.5 64.5 189.5 54.5 Z" fill="#1D1D1B"/><path d="M194 61 Q198 58.5 202 60.8 Q201 64 198 64.2 Q195 64.2 194 61 Z" fill="#FF9CD8"/></g><g class="lol"><g class="eye"><path d="M199.5 49.5 Q204 42.5 208.5 49.5" fill="none" stroke="#1D1D1B" stroke-width="2.6" stroke-linecap="round"/></g><g class="eye"><path d="M177.5 50 Q182 43 186.5 50" fill="none" stroke="#1D1D1B" stroke-width="2.6" stroke-linecap="round"/></g><g class="mouth"><path d="M189.5 54.5 Q198 56 206.5 53.5 Q206 65.5 198 66 Q190.5 66 189.5 54.5 Z" fill="#1D1D1B"/><path d="M193.5 62.5 Q198 59.5 202.5 62 Q201 65.3 198 65.4 Q195 65.4 193.5 62.5 Z" fill="#FF9CD8"/></g></g>
+
+
+<path d="M193.183 80.14C215.313 80.14 233.253 62.2001 233.253 40.07C233.253 17.9399 215.313 0 193.183 0C171.053 0 153.113 17.9399 153.113 40.07C153.113 62.2001 171.053 80.14 193.183 80.14Z" fill="url(#paint14_linear_20_9587)"/>
+<path d="M162.693 65.9707H223.663C223.663 68.4407 221.663 70.4407 219.193 70.4407H167.163C164.693 70.4407 162.693 68.4407 162.693 65.9707Z" fill="black"/>
+<path d="M167.163 70.1504H219.193C221.663 70.1504 223.663 72.1504 223.663 74.6204H162.693C162.693 72.1504 164.693 70.1504 167.163 70.1504Z" fill="black"/>
+<path d="M180.213 126.781L111.973 122.441C96.4032 121.451 84.2832 108.531 84.2832 92.9311C84.2832 82.8211 92.4832 74.6211 102.593 74.6211H223.683V86.0011C223.683 109.591 203.763 128.281 180.223 126.781H180.213Z" fill-rule="evenodd" clip-rule="evenodd" fill="url(#paint15_linear_20_9587)"/>
+<mask id="mask2_20_9587" style="mask-type:luminance" maskUnits="userSpaceOnUse" x="84" y="74" width="140" height="53">
+<path d="M180.213 126.781L111.973 122.441C96.4032 121.451 84.2832 108.531 84.2832 92.9311C84.2832 82.8211 92.4832 74.6211 102.593 74.6211H223.683V86.0011C223.683 109.591 203.763 128.281 180.223 126.781H180.213Z" fill="white"/>
+</mask>
+<g mask="url(#mask2_20_9587)">
+<path d="M98.8036 81.5908C98.8036 88.2403 93.4131 93.6308 86.7636 93.6308C80.1141 93.6308 74.7236 88.2403 74.7236 81.5908C74.7236 74.9413 80.1141 69.5508 86.7636 69.5508C93.4131 69.5508 98.8036 74.9413 98.8036 81.5908Z" stroke-width="2" stroke-miterlimit="10" stroke="#88E3FF"/>
+<path d="M97.6533 85.52H171.023C173.893 85.52 176.643 86.66 178.673 88.69L182.383 92.4C184.703 94.72 187.853 96.02 191.133 96.02H210.753C214.033 96.02 217.183 94.72 219.503 92.4L228.903 83" stroke-width="2" stroke-miterlimit="10" stroke="#88E3FF"/>
+<path d="M171.494 126.38C179.563 126.38 186.104 119.839 186.104 111.77C186.104 103.701 179.563 97.1602 171.494 97.1602C163.425 97.1602 156.884 103.701 156.884 111.77C156.884 119.839 163.425 126.38 171.494 126.38Z" fill="#88E3FF"/>
+<path d="M104.543 126.01C113.479 126.01 120.723 118.766 120.723 109.83C120.723 100.894 113.479 93.6504 104.543 93.6504C95.6073 93.6504 88.3633 100.894 88.3633 109.83C88.3633 118.766 95.6073 126.01 104.543 126.01Z" fill="#88E3FF"/>
+</g>
+<path d="M209.004 70.1504H193.914C188.347 70.1504 183.834 74.6611 183.834 80.2254C183.834 85.7897 188.347 90.3004 193.914 90.3004H209.004C214.571 90.3004 219.084 85.7897 219.084 80.2254C219.084 74.6611 214.571 70.1504 209.004 70.1504Z" fill="url(#paint16_linear_20_9587)"/>
+<path d="M209.214 72.3809H193.704C189.506 72.3809 186.104 75.7813 186.104 79.9759C186.104 84.1705 189.506 87.5709 193.704 87.5709H209.214C213.411 87.5709 216.814 84.1705 216.814 79.9759C216.814 75.7813 213.411 72.3809 209.214 72.3809Z" fill="url(#paint17_linear_20_9587)"/>
+<path d="M201.454 84.8698C204.177 84.8698 206.384 82.6625 206.384 79.9398C206.384 77.217 204.177 75.0098 201.454 75.0098C198.732 75.0098 196.524 77.217 196.524 79.9398C196.524 82.6625 198.732 84.8698 201.454 84.8698Z" fill="#DBDBDB"/>
+<path d="M208.634 77.2306C209.418 77.2306 210.054 76.5949 210.054 75.8106C210.054 75.0264 209.418 74.3906 208.634 74.3906C207.85 74.3906 207.214 75.0264 207.214 75.8106C207.214 76.5949 207.85 77.2306 208.634 77.2306Z" fill="#DBDBDB"/>
+<path d="M208.634 85.4806C209.418 85.4806 210.054 84.8449 210.054 84.0606C210.054 83.2764 209.418 82.6406 208.634 82.6406C207.85 82.6406 207.214 83.2764 207.214 84.0606C207.214 84.8449 207.85 85.4806 208.634 85.4806Z" fill="#DBDBDB"/>
+<path d="M194.204 77.2306C194.988 77.2306 195.624 76.5949 195.624 75.8106C195.624 75.0264 194.988 74.3906 194.204 74.3906C193.42 74.3906 192.784 75.0264 192.784 75.8106C192.784 76.5949 193.42 77.2306 194.204 77.2306Z" fill="#DBDBDB"/>
+<path d="M194.204 85.4806C194.988 85.4806 195.624 84.8449 195.624 84.0606C195.624 83.2764 194.988 82.6406 194.204 82.6406C193.42 82.6406 192.784 83.2764 192.784 84.0606C192.784 84.8449 193.42 85.4806 194.204 85.4806Z" fill="#DBDBDB"/>
+<g class="paw"><g class="mugr" transform="translate(180 146) rotate(50)"><path d="M2 -7 C-7 -7 -7 7 2 7" fill="none" stroke="#FFFFFF" stroke-width="3.4" stroke-linecap="round"/><path d="M2 -12 h22 v17 a7 7 0 0 1 -7 7 h-8 a7 7 0 0 1 -7 -7 z" fill="#FFFFFF"/><rect x="2" y="-12" width="22" height="3.6" rx="1" fill="#8A5A3C"/><rect x="7" y="-4.5" width="12" height="9" rx="2.5" fill="none" stroke="#500E82" stroke-width="1.8"/><circle cx="11" cy="0" r="1" fill="#500E82"/><circle cx="15" cy="0" r="1" fill="#500E82"/></g><path d="M178.703 149.021V131.121H164.733V138.841L162.403 146.631C162.183 147.361 162.733 148.101 163.493 148.101H164.723V154.801C164.723 159.201 168.293 162.771 172.693 162.771H178.273C181.903 162.771 184.993 159.801 184.893 156.181C184.793 152.581 182.153 149.621 178.703 149.031V149.021Z" fill-rule="evenodd" clip-rule="evenodd" fill="url(#paint18_linear_20_9587)"/>
+<path d="M180.003 134.61H162.523C160.273 134.61 158.453 132.79 158.453 130.54V112.05C158.453 104.97 164.193 99.2402 171.263 99.2402C178.343 99.2402 184.073 104.98 184.073 112.05V130.54C184.073 132.79 182.253 134.61 180.003 134.61Z" fill="url(#paint19_linear_20_9587)"/>
+<mask id="mask3_20_9587" style="mask-type:luminance" maskUnits="userSpaceOnUse" x="158" y="99" width="27" height="36">
+<path d="M180.003 134.61H162.523C160.273 134.61 158.453 132.79 158.453 130.54V112.05C158.453 104.97 164.193 99.2402 171.263 99.2402C178.343 99.2402 184.073 104.98 184.073 112.05V130.54C184.073 132.79 182.253 134.61 180.003 134.61Z" fill="white"/>
+</mask>
+<g mask="url(#mask3_20_9587)">
+<path d="M196.653 123.041H150.233V138.621H196.653V123.041Z" fill="black"/>
+</g></g>
+<path d="M110.263 149.24V131.34H96.293V139.06L93.963 146.85C93.743 147.58 94.293 148.32 95.053 148.32H96.283V155.02C96.283 159.42 99.853 162.99 104.253 162.99H109.833C113.463 162.99 116.553 160.02 116.453 156.4C116.353 152.8 113.713 149.84 110.263 149.25V149.24Z" fill-rule="evenodd" clip-rule="evenodd" fill="url(#paint20_linear_20_9587)"/>
+<path d="M112.033 134.82H94.2634C91.9034 134.82 89.9834 132.9 89.9834 130.54V110.28C89.9834 102.31 96.4434 95.8496 104.413 95.8496C113.293 95.8496 120.073 103.8 118.663 112.57L116.233 131.31C115.863 133.35 114.093 134.83 112.023 134.83L112.033 134.82Z" fill="url(#paint21_linear_20_9587)"/>
+<mask id="mask4_20_9587" style="mask-type:luminance" maskUnits="userSpaceOnUse" x="89" y="95" width="30" height="40">
+<path d="M112.033 134.82H94.2634C91.9034 134.82 89.9834 132.9 89.9834 130.54V110.28C89.9834 102.31 96.4434 95.8496 104.413 95.8496C113.293 95.8496 120.073 103.8 118.663 112.57L116.233 131.31C115.863 133.35 114.093 134.83 112.023 134.83L112.033 134.82Z" fill="white"/>
+</mask>
+<g mask="url(#mask4_20_9587)">
+<path d="M127.963 121.879H81.543V137.459H127.963V121.879Z" fill="black"/>
+</g>
+<defs>
+<linearGradient id="paint0_linear_20_9587" x1="124.833" y1="147.651" x2="140.563" y2="120.391" gradientUnits="userSpaceOnUse">
+<stop offset="0.27" stop-color="#FFA933"/>
+<stop offset="0.48" stop-color="#FF9F2E"/>
+<stop offset="0.83" stop-color="#FF8623"/>
+<stop offset="1" stop-color="#FF781D"/>
+</linearGradient>
+<linearGradient id="paint1_linear_20_9587" x1="131.824" y1="122.2" x2="131.824" y2="83.2305" gradientUnits="userSpaceOnUse">
+<stop offset="0.24" stop-color="#88E3FF"/>
+<stop offset="0.26" stop-color="#91E5FF"/>
+<stop offset="0.34" stop-color="#AAEAFF"/>
+<stop offset="0.42" stop-color="#BEEFFF"/>
+<stop offset="0.52" stop-color="#CCF2FF"/>
+<stop offset="0.63" stop-color="#D4F4FF"/>
+<stop offset="0.84" stop-color="#D7F5FF"/>
+</linearGradient>
+<linearGradient id="paint2_linear_20_9587" x1="192.324" y1="147.911" x2="208.054" y2="120.651" gradientUnits="userSpaceOnUse">
+<stop offset="0.27" stop-color="#FFA933"/>
+<stop offset="0.48" stop-color="#FF9F2E"/>
+<stop offset="0.83" stop-color="#FF8623"/>
+<stop offset="1" stop-color="#FF781D"/>
+</linearGradient>
+<linearGradient id="paint3_linear_20_9587" x1="197.713" y1="122.46" x2="197.713" y2="87.0898" gradientUnits="userSpaceOnUse">
+<stop offset="0.28" stop-color="#88E3FF"/>
+<stop offset="0.3" stop-color="#90E5FF"/>
+<stop offset="0.38" stop-color="#AAEAFF"/>
+<stop offset="0.45" stop-color="#BEEFFF"/>
+<stop offset="0.54" stop-color="#CCF2FF"/>
+<stop offset="0.66" stop-color="#D4F4FF"/>
+<stop offset="0.85" stop-color="#D7F5FF"/>
+</linearGradient>
+<linearGradient id="paint4_linear_20_9587" x1="0.00349093" y1="75.7202" x2="96.3235" y2="75.7202" gradientUnits="userSpaceOnUse">
+<stop offset="0.27" stop-color="#FFA933"/>
+<stop offset="0.73" stop-color="#FF8623"/>
+<stop offset="1" stop-color="#FF781D"/>
+</linearGradient>
+<linearGradient id="paint5_linear_20_9587" x1="139.712" y1="71.7595" x2="139.712" y2="41.7195" gradientUnits="userSpaceOnUse">
+<stop offset="0.26" stop-color="#88E3FF"/>
+<stop offset="0.43" stop-color="#A4E9FF"/>
+<stop offset="0.63" stop-color="#C0EFFF"/>
+<stop offset="0.81" stop-color="#D1F3FF"/>
+<stop offset="0.94" stop-color="#D7F5FF"/>
+</linearGradient>
+<linearGradient id="paint6_linear_20_9587" x1="115.673" y1="41.6988" x2="115.783" y2="56.8787" gradientUnits="userSpaceOnUse">
+<stop stop-color="#6A3C98"/>
+<stop offset="0.17" stop-color="#602A8F"/>
+<stop offset="0.4" stop-color="#571A87"/>
+<stop offset="0.65" stop-color="#511083"/>
+<stop offset="1" stop-color="#500E82"/>
+</linearGradient>
+<linearGradient id="paint7_linear_20_9587" x1="110.213" y1="41.7387" x2="110.333" y2="56.8688" gradientUnits="userSpaceOnUse">
+<stop offset="0.31" stop-color="#6A3C98"/>
+<stop offset="0.51" stop-color="#653494"/>
+<stop offset="0.81" stop-color="#591E89"/>
+<stop offset="1" stop-color="#500E82"/>
+</linearGradient>
+<linearGradient id="paint8_linear_20_9587" x1="135.383" y1="79.3387" x2="135.383" y2="52.7587" gradientUnits="userSpaceOnUse">
+<stop offset="0.26" stop-color="#88E3FF"/>
+<stop offset="0.43" stop-color="#A4E9FF"/>
+<stop offset="0.63" stop-color="#C0EFFF"/>
+<stop offset="0.81" stop-color="#D1F3FF"/>
+<stop offset="0.94" stop-color="#D7F5FF"/>
+</linearGradient>
+<linearGradient id="paint9_linear_20_9587" x1="113.283" y1="52.7588" x2="113.483" y2="79.3788" gradientUnits="userSpaceOnUse">
+<stop stop-color="#6A3C98"/>
+<stop offset="0.17" stop-color="#602A8F"/>
+<stop offset="0.4" stop-color="#571A87"/>
+<stop offset="0.65" stop-color="#511083"/>
+<stop offset="1" stop-color="#500E82"/>
+</linearGradient>
+<linearGradient id="paint10_linear_20_9587" x1="103.713" y1="52.8288" x2="103.913" y2="79.3688" gradientUnits="userSpaceOnUse">
+<stop offset="0.31" stop-color="#6A3C98"/>
+<stop offset="0.51" stop-color="#653494"/>
+<stop offset="0.81" stop-color="#591E89"/>
+<stop offset="1" stop-color="#500E82"/>
+</linearGradient>
+<linearGradient id="paint11_linear_20_9587" x1="129.992" y1="65.9448" x2="130.083" y2="78.1045" gradientUnits="userSpaceOnUse">
+<stop stop-color="#6A3C98"/>
+<stop offset="0.11" stop-color="#643293"/>
+<stop offset="0.41" stop-color="#591E89"/>
+<stop offset="0.71" stop-color="#521283"/>
+<stop offset="1" stop-color="#500E82"/>
+</linearGradient>
+<linearGradient id="paint12_linear_20_9587" x1="157.378" y1="78.7499" x2="157.38" y2="62.9194" gradientUnits="userSpaceOnUse">
+<stop offset="0.13" stop-color="#88E3FF"/>
+<stop offset="0.2" stop-color="#9AE7FF"/>
+<stop offset="0.33" stop-color="#B4EDFF"/>
+<stop offset="0.46" stop-color="#C7F1FF"/>
+<stop offset="0.59" stop-color="#D3F4FF"/>
+<stop offset="0.73" stop-color="#D7F5FF"/>
+</linearGradient>
+<linearGradient id="paint13_linear_20_9587" x1="193.183" y1="20.7798" x2="193.183" y2="72.3798" gradientUnits="userSpaceOnUse">
+<stop offset="0.16" stop-color="#FFA933"/>
+<stop offset="0.42" stop-color="#FFA531"/>
+<stop offset="0.64" stop-color="#FF9A2C"/>
+<stop offset="0.86" stop-color="#FF8724"/>
+<stop offset="1" stop-color="#FF781D"/>
+</linearGradient>
+<linearGradient id="paint14_linear_20_9587" x1="193.183" y1="-12.14" x2="193.183" y2="77.2" gradientUnits="userSpaceOnUse">
+<stop stop-color="#95FFEC" stop-opacity="0.5"/>
+<stop offset="0.14" stop-color="#95FFEC" stop-opacity="0.47"/>
+<stop offset="0.35" stop-color="#95FFEC" stop-opacity="0.39"/>
+<stop offset="0.61" stop-color="#95FFEC" stop-opacity="0.26"/>
+<stop offset="0.9" stop-color="#95FFEC" stop-opacity="0.07"/>
+<stop offset="1" stop-color="#95FFEC" stop-opacity="0"/>
+</linearGradient>
+<linearGradient id="paint15_linear_20_9587" x1="153.973" y1="126.861" x2="153.973" y2="74.6211" gradientUnits="userSpaceOnUse">
+<stop offset="0.09" stop-color="#88E3FF"/>
+<stop offset="0.1" stop-color="#8BE3FF"/>
+<stop offset="0.2" stop-color="#A6E9FF"/>
+<stop offset="0.31" stop-color="#BCEEFF"/>
+<stop offset="0.44" stop-color="#CBF2FF"/>
+<stop offset="0.58" stop-color="#D4F4FF"/>
+<stop offset="0.8" stop-color="#D7F5FF"/>
+</linearGradient>
+<linearGradient id="paint16_linear_20_9587" x1="201.454" y1="90.3004" x2="201.454" y2="70.1504" gradientUnits="userSpaceOnUse">
+<stop stop-color="#88E3FF"/>
+<stop offset="0.05" stop-color="#97E6FF"/>
+<stop offset="0.15" stop-color="#AEEBFF"/>
+<stop offset="0.27" stop-color="#C0EFFF"/>
+<stop offset="0.41" stop-color="#CDF2FF"/>
+<stop offset="0.59" stop-color="#D4F4FF"/>
+<stop offset="1" stop-color="#D7F5FF"/>
+</linearGradient>
+<linearGradient id="paint17_linear_20_9587" x1="201.454" y1="87.5709" x2="201.454" y2="60.5809" gradientUnits="userSpaceOnUse">
+<stop stop-color="#7C7C7C"/>
+<stop offset="0.05" stop-color="#747474"/>
+<stop offset="0.5" stop-color="#353535"/>
+<stop offset="0.83" stop-color="#0E0E0E"/>
+<stop offset="1"/>
+</linearGradient>
+<linearGradient id="paint18_linear_20_9587" x1="165.873" y1="160.061" x2="181.603" y2="132.801" gradientUnits="userSpaceOnUse">
+<stop offset="0.27" stop-color="#FFA933"/>
+<stop offset="0.48" stop-color="#FF9F2E"/>
+<stop offset="0.83" stop-color="#FF8623"/>
+<stop offset="1" stop-color="#FF781D"/>
+</linearGradient>
+<linearGradient id="paint19_linear_20_9587" x1="171.263" y1="134.61" x2="171.263" y2="99.2402" gradientUnits="userSpaceOnUse">
+<stop offset="0.28" stop-color="#88E3FF"/>
+<stop offset="0.3" stop-color="#90E5FF"/>
+<stop offset="0.38" stop-color="#AAEAFF"/>
+<stop offset="0.45" stop-color="#BEEFFF"/>
+<stop offset="0.54" stop-color="#CCF2FF"/>
+<stop offset="0.66" stop-color="#D4F4FF"/>
+<stop offset="0.85" stop-color="#D7F5FF"/>
+</linearGradient>
+<linearGradient id="paint20_linear_20_9587" x1="97.423" y1="160.28" x2="113.163" y2="133.02" gradientUnits="userSpaceOnUse">
+<stop offset="0.27" stop-color="#FFA933"/>
+<stop offset="0.48" stop-color="#FF9F2E"/>
+<stop offset="0.83" stop-color="#FF8623"/>
+<stop offset="1" stop-color="#FF781D"/>
+</linearGradient>
+<linearGradient id="paint21_linear_20_9587" x1="104.413" y1="134.82" x2="104.413" y2="95.8496" gradientUnits="userSpaceOnUse">
+<stop offset="0.24" stop-color="#88E3FF"/>
+<stop offset="0.26" stop-color="#91E5FF"/>
+<stop offset="0.34" stop-color="#AAEAFF"/>
+<stop offset="0.42" stop-color="#BEEFFF"/>
+<stop offset="0.52" stop-color="#CCF2FF"/>
+<stop offset="0.63" stop-color="#D4F4FF"/>
+<stop offset="0.84" stop-color="#D7F5FF"/>
+</linearGradient>
+</defs>
+</svg>
+      <div class="spray" aria-hidden="true" id="spray"></div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="claim">
+    <div class="wrap">
+      <div class="card">
+        <img src="img/mystery-box.webp" alt="">
+        <div>
+          <h2>Your mystery box: 15 days of full access, free</h2>
+          <p>Every Bitrise product, 15 days, on us.</p>
+          <span class="code"><span id="promo">BITBOT-15</span><button type="button" id="copyBtn">Copy code</button></span>
+        </div>
+        <a class="btn btn-primary" href="https://bitrise.io/" target="_blank" rel="noopener">Claim 15 days free</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="fixes" id="fixes">
+    <div class="wrap">
+      <h3>The five fixes that earned it</h3>
+      <div class="grid badges">
+        <div class="badge"><span class="stage">Code</span><b>Works-on-my-machine Slayer</b><span class="did">You reproduced the CI failure in the exact same VM.</span></div>
+        <div class="badge"><span class="stage">Build</span><b>Hello, Speedy</b><span class="did">You switched to M4 Pro and turned on Build Cache.</span></div>
+        <div class="badge"><span class="stage">Test</span><b>Knight of the Flaky</b><span class="did">You quarantined the flaky tests and got the suite green.</span></div>
+        <div class="badge"><span class="stage">Release</span><b>Keeper of the Green Light</b><span class="did">You wrote the release notes and signed off.</span></div>
+        <div class="badge"><span class="stage">Deploy</span><b>The Double Pusher</b><span class="did">You shipped to both stores in one go.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="team">
+    <div class="wrap">
+      <h3>Want the real-world version?</h3>
+      <p class="sub">Here's how our team thinks about each fix.</p>
+      <div class="posts">
+        <article class="post">
+          <div class="author"><span class="face" data-i="AK"><img src="https://cdn.prod.website-files.com/5db35de024bb988f5fb4e168/66167c0a0fe33fdf133a7937_6377bd81c4e462a30674e4fb_arpad-kun.png" alt="" loading="lazy" onerror="this.remove()"></span><div><b>Arpad Kun</b><span>VP of Engineering and Infrastructure</span></div></div>
+          <a class="post-title" href="https://bitrise.io/blog/post/bitrise-remote-dev-environments-beta-launch" target="_blank" rel="noopener">The environment tax: why we built Bitrise Remote Dev Environments</a>
+          <div class="post-foot"><span class="tag">Code</span><a class="more" href="#subscribe" data-topic="Code">More dev environment tips &rarr;</a></div>
+        </article>
+        <article class="post">
+          <div class="author"><span class="face" data-i="ZM"><img src="https://cdn.prod.website-files.com/5db35de024bb988f5fb4e168/66167c091c36e53c9c3229a5_6377bd1c30f6ad3a53e1781e_zsolt-marta.png" alt="" loading="lazy" onerror="this.remove()"></span><div><b>Zsolt M&aacute;rta</b><span>Staff Software Engineer</span></div></div>
+          <a class="post-title" href="https://bitrise.io/blog/post/optimizing-bitrise-build-cache-clients" target="_blank" rel="noopener">Optimizing Bitrise Build Cache clients</a>
+          <div class="post-foot"><span class="tag">Build</span><a class="more" href="#subscribe" data-topic="Build">More build speed tips &rarr;</a></div>
+        </article>
+        <article class="post">
+          <div class="author"><span class="face" data-i="BG"><img src="https://cdn.prod.website-files.com/5db35de024bb988f5fb4e168/68ff7b8cfe71a2fec6110035_bianca-galan-author-profile-bitrise.jpg" alt="" loading="lazy" onerror="this.remove()"></span><div><b>Bianca Galan</b><span>Senior Product Marketing Manager, CI</span></div></div>
+          <a class="post-title" href="https://bitrise.io/blog/post/new-testing-experience-in-bitrise-from-red-to-green-faster-than-ever" target="_blank" rel="noopener">New Testing experience in Bitrise: from red to green faster than ever</a>
+          <div class="post-foot"><span class="tag">Test</span><a class="more" href="#subscribe" data-topic="Test">More testing tips &rarr;</a></div>
+        </article>
+        <article class="post">
+          <div class="author"><span class="face" data-i="DŽ"><img src="https://cdn.prod.website-files.com/5db35de024bb988f5fb4e168/673b286d8b17608a52d0991b_Dan%20Headshot.jpeg" alt="" loading="lazy" onerror="this.remove()"></span><div><b>Dan &#381;&#271;&aacute;rek</b><span>Product Marketing</span></div></div>
+          <a class="post-title" href="https://bitrise.io/blog/post/faster-release-notes-with-presets-and-localization-copying" target="_blank" rel="noopener">Faster Release Notes With Presets and Localization Copying</a>
+          <div class="post-foot"><span class="tag">Release</span><a class="more" href="#subscribe" data-topic="Release">More release tips &rarr;</a></div>
+        </article>
+        <article class="post">
+          <div class="author"><span class="face" data-i="ZB"><img src="https://cdn.prod.website-files.com/5db35de024bb988f5fb4e168/66167c082746023e0163001c_6377bc0430f6ad966ee150fb_zoltan_baba.png" alt="" loading="lazy" onerror="this.remove()"></span><div><b>Zoltan Baba</b><span>Senior Tech Writing Specialist</span></div></div>
+          <a class="post-title" href="https://bitrise.io/blog/post/ipa-mastering-ios-app-packaging" target="_blank" rel="noopener">IPA: Mastering iOS app packaging with Bitrise</a>
+          <div class="post-foot"><span class="tag">Deploy</span><a class="more" href="#subscribe" data-topic="Deploy">More store delivery tips &rarr;</a></div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="who" id="who">
+    <div class="wrap who-grid">
+      <div class="who-text">
+        <p class="eyebrow">Who we are</p>
+        <h3>Built by app developers, for app developers</h3>
+        <p>Founded in Budapest in 2014. Remote-first, with teams in San Francisco, London and Budapest.</p>
+        <ul class="founders">
+          <li><b>Barnab&aacute;s Birmacher</b><span>CEO and co-founder</span></li>
+          <li><b>Viktor Benei</b><span>CTO and co-founder</span></li>
+          <li><b>Daniel Balla</b><span>CPO and co-founder</span></li>
+        </ul>
+        <div class="links">
+          <a href="https://bitrise.io/blog/post/why-poor-mobile-app-development-is-holding-fintech-back---insights-from-bitrise-co-founder-daniel-balla-at-money20-20" target="_blank" rel="noopener">Daniel Balla at Money20/20 &rarr;</a>
+        </div>
+      </div>
+      <figure class="interview">
+        <!-- FOUNDER INTERVIEW: replace this block with the real video (thumbnail + link to the hosted video) once it's recorded -->
+        <div class="video" role="img" aria-label="Founder interview video, coming soon">
+          <img src="img/bitbot-flying.webp" alt="">
+          <span class="play" aria-hidden="true"></span>
+        </div>
+        <figcaption><b>Founder interview</b><span>Coming soon</span></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="learn">
+    <div class="wrap">
+      <h3>Explore Bitrise</h3>
+      <div class="learn-grid">
+        <a href="https://bitrise.io/platform/mobile-devops" target="_blank" rel="noopener"><b>The platform</b></a>
+        <a href="https://bitrise.io/customer-stories" target="_blank" rel="noopener"><b>Customer stories</b></a>
+        <a href="https://bitrise.io/reports/state-of-mobile-development-2026" target="_blank" rel="noopener"><b>2026 mobile report</b></a>
+        <a href="https://bitrise.io/about" target="_blank" rel="noopener"><b>About Bitrise</b></a>
+      </div>
+    </div>
+  </section>
+
+  <section class="subscribe" id="subscribe">
+    <div class="wrap">
+      <form class="sub-card" id="subForm" novalidate>
+        <div>
+          <h3>Best practices, monthly</h3>
+                    <fieldset class="topics" aria-label="Topics">
+            <label><input type="checkbox" id="t-Code" value="Code"> Dev environments</label>
+            <label><input type="checkbox" id="t-Build" value="Build"> Faster builds</label>
+            <label><input type="checkbox" id="t-Test" value="Test"> Testing</label>
+            <label><input type="checkbox" id="t-Release" value="Release"> Releases</label>
+            <label><input type="checkbox" id="t-Deploy" value="Deploy"> Store delivery</label>
+          </fieldset>
+        </div>
+        <div class="sub-row">
+          <label for="subEmail" class="sr">Work email</label>
+          <input type="email" id="subEmail" placeholder="you@company.com" autocomplete="email" required>
+          <button type="submit" class="btn btn-primary">Subscribe</button>
+        </div>
+        <p class="sub-msg" id="subMsg" role="status"></p>
+      </form>
+    </div>
+  </section>
+
+  <section class="again">
+    <div class="wrap again-row">
+      <p><b>Had fun?</b></p>
+      <a class="btn btn-ghost" href="../">Play again</a>
+    </div>
+    <div class="wrap"><p class="fine">Placeholder offer, code and links pending Marketing sign-off.</p></div>
+  </section>
+</main>
+
+<script>
+// coffee spray: droplets fan out from PurrCat's mouth on every spit-take
+const spray = document.getElementById("spray");
+for (let i = 0; i < 26; i++) {
+  const d = document.createElement("i"), a = (Math.random() - 0.55) * 1.3, r = 60 + Math.random() * 140;
+  d.style.setProperty("--dx", `${Math.cos(a) * r}px`); d.style.setProperty("--dy", `${Math.sin(a) * r + 30}px`);
+  d.style.animationDelay = `${Math.random() * 0.12}s`; spray.appendChild(d);
+}
+document.getElementById("copyBtn").addEventListener("click", e => {
+  const code = document.getElementById("promo").textContent, b = e.currentTarget;
+  navigator.clipboard.writeText(code).then(() => { b.textContent = "Copied"; setTimeout(() => b.textContent = "Copy code", 1600); })
+    .catch(() => { const r = document.createRange(); r.selectNodeContents(document.getElementById("promo")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent = "Press Ctrl+C"; });
+});
+
+// "Get more X tips" on each fix: preselect that topic in the newsletter form
+document.querySelectorAll(".post .more").forEach(a => a.addEventListener("click", () => {
+  const box = document.getElementById("t-" + a.dataset.topic); if (box) box.checked = true;
+  const f = document.getElementById("subForm"); f.classList.remove("flash"); void f.offsetWidth; f.classList.add("flash");
+  setTimeout(() => document.getElementById("subEmail").focus({ preventScroll: true }), 500);
+}));
+// newsletter: placeholder until it is connected to the mailing tool (set NEWSLETTER_ENDPOINT)
+const NEWSLETTER_ENDPOINT = "";
+document.getElementById("subForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const email = document.getElementById("subEmail"), msg = document.getElementById("subMsg");
+  if (!email.checkValidity()) { msg.textContent = "Enter a valid work email, like you@company.com."; email.focus(); return; }
+  const topics = [...document.querySelectorAll(".topics input:checked")].map(i => i.value);
+  if (!NEWSLETTER_ENDPOINT) { msg.textContent = "Signup isn't connected yet. Topics picked: " + (topics.join(", ") || "all") + "."; return; }
+  fetch(NEWSLETTER_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: email.value, topics }) })
+    .then(r => { msg.textContent = r.ok ? "You're subscribed. Check your inbox to confirm." : "That didn't go through. Try again in a moment."; })
+    .catch(() => { msg.textContent = "That didn't go through. Check your connection and try again."; });
+});
+</script>
+
+</body>
+</html>
