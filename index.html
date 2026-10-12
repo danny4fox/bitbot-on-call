@@ -308,6 +308,17 @@ body.asset-mode { background: transparent; } body.asset-mode * { transition: non
   .rotate-hint button { border: 0; background: #F6EAFF; color: #500E82; font: 700 12px/1 var(--font-body); border-radius: 999px; padding: 6px 9px; cursor: pointer; }
   .rotate-hint[hidden] { display: none; }
 }
+
+/* sideways mode: the stage is laid out landscape and turned 90deg to fill a phone held sideways */
+.exit-sideways { display: none; }
+html.sideways, html.sideways body { overflow: hidden; }
+html.sideways .stage { position: fixed; top: 0; left: 0; width: var(--svh, 100vh); height: var(--svw, 100vw); transform-origin: 0 0; transform: translateX(var(--svw, 100vw)) rotate(90deg); }
+html.sideways .rotate-hint { display: none !important; }
+html.sideways .exit-sideways { display: block; position: absolute; left: 10px; top: 10px; z-index: 6; border: 0; border-radius: 999px; padding: 7px 11px; background: rgba(255,255,255,.9); color: #500E82; font: 700 11px/1 var(--font-body); cursor: pointer; }
+html.sideways .fix, html.sideways .fix.intro, html.sideways .fix.end { width: min(620px, calc(var(--svh, 100vh) - 120px)); top: calc(50% + 20px); max-height: calc(100% - 56px); }
+html.sideways .fix:not(.intro):not(.end) .fix-viz, html.sideways .fix:not(.intro):not(.end) .fix-status p, html.sideways .fix-crumb, html.sideways .intro-how, html.sideways .intro-pal { display: none; }
+html.sideways .celeb { width: min(300px, calc(var(--svh, 100vh) - 32px)); }
+.rotate-hint #goSideways { background: #500E82; color: #FFFFFF; }
 </style>
 
 </head>
@@ -328,7 +339,8 @@ body.asset-mode { background: transparent; } body.asset-mode * { transition: non
     <g class="wn"><circle cx="50" cy="50" r="47" fill="url(#dmWarn)"/><circle cx="50" cy="50" r="40" fill="none" stroke="#FFFFFF" stroke-opacity=".55" stroke-width="3"/>
       <rect x="44" y="20" width="12" height="40" rx="6" fill="#000000"/><circle cx="50" cy="73" r="7" fill="#000000"/></g>
   </svg></div>
-  <div class="rotate-hint" id="rotateHint" role="note"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2.5" fill="none" stroke="#500E82" stroke-width="2"/><circle cx="12" cy="18.5" r="1" fill="#500E82"/></svg>Turn your phone for the full loop<button type="button" id="rotateOk">OK</button></div>
+  <div class="rotate-hint" id="rotateHint" role="note"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2.5" fill="none" stroke="#500E82" stroke-width="2"/><circle cx="12" cy="18.5" r="1" fill="#500E82"/></svg>Turn your phone, or <button type="button" id="goSideways">Play sideways</button><button type="button" id="rotateOk" aria-label="Dismiss">&times;</button></div>
+  <button type="button" class="exit-sideways" id="exitSideways">Exit sideways</button>
   <div class="celeb" id="celeb" hidden role="status" aria-live="polite"></div>
   <div class="fix-scrim" id="fixScrim"></div>
   <section class="fix" id="fix" role="dialog" aria-labelledby="fixTitle" hidden></section>
@@ -613,6 +625,8 @@ function showEnd(won, gold) {
   setTimeout(() => { const b = endEl.querySelector(".end-cta"); if (b) b.focus({ preventScroll: true }); }, 500);
 }
 document.getElementById("rotateOk").addEventListener("click", () => { document.getElementById("rotateHint").hidden = true; });
+document.getElementById("goSideways").addEventListener("click", () => setSideways(true));
+document.getElementById("exitSideways").addEventListener("click", () => setSideways(false));
 addEventListener("orientationchange", () => setTimeout(resize, 250));   // some in-app browsers report the new size late
 function showIntro() {
   const el = document.getElementById("introCard"); failAt = 1e9;
@@ -958,9 +972,8 @@ function closeFix(si) {
   fixEl.classList.add("done"); fixEl.querySelector(".state").innerHTML = "FIXED";
   setTimeout(() => {
     // dive back down into the stage it belongs to
-    const p = stages[si].center.clone().project(camera), r = canvas.getBoundingClientRect();
-    const sx = r.left + (p.x * 0.5 + 0.5) * r.width, sy = r.top + (0.5 - p.y * 0.5) * r.height;   // stage on screen
-    const tx = sx - (r.left + r.width * 0.5), ty = sy - (r.top + r.height * 0.47);   // from the window's resting centre (left 50%, top 47%)
+    const p = stages[si].center.clone().project(camera), [sx, sy] = ndcLocal(p);   // stage, in stage-local pixels
+    const tx = sx - canvas.clientWidth * 0.5, ty = sy - canvas.clientHeight * 0.47;   // from the window's resting centre (left 50%, top 47%)
     fixEl.style.setProperty("--tx", tx.toFixed(1) + "px"); fixEl.style.setProperty("--ty", ty.toFixed(1) + "px");
     if (SIM) document.body.dataset.fixdbg = JSON.stringify({ p: [p.x, p.y], sx, sy, tx, ty });
     fixEl.classList.remove("in"); fixEl.classList.add("out"); fixScrim.classList.remove("on");
@@ -971,8 +984,7 @@ function closeFix(si) {
 const giftEl = document.getElementById("hudGift"), celebEl = document.getElementById("celeb");
 let celebTimer = 0;
 function sendToken(stageIdx) {   // a glowing spark flies from the healed stage up into the HUD gift
-  const p = stages[stageIdx].center.clone().applyMatrix4(trackRoot.matrixWorld).project(camera), r = canvas.getBoundingClientRect(), g = giftEl.getBoundingClientRect();
-  const x0 = r.left + (p.x * 0.5 + 0.5) * r.width, y0 = r.top + (0.5 - p.y * 0.5) * r.height, x1 = g.left + g.width / 2, y1 = g.top + g.height / 2;
+  const [x0, y0] = ndcLocal(stages[stageIdx].center.clone().applyMatrix4(trackRoot.matrixWorld).project(camera)), [x1, y1] = centerLocal(giftEl);
   const t = document.createElement("div"); t.className = "token"; document.getElementById("stage").appendChild(t);
   const mx = (x0 + x1) / 2, my = Math.min(y0, y1) - 120;
   const anim = t.animate([{ transform: `translate(${x0}px, ${y0}px) scale(1)` }, { transform: `translate(${mx}px, ${my}px) scale(1.3)`, offset: 0.5 }, { transform: `translate(${x1}px, ${y1}px) scale(.5)` }],
@@ -981,7 +993,7 @@ function sendToken(stageIdx) {   // a glowing spark flies from the healed stage 
 }
 function celebConfetti() {   // brand confetti from the centre: tiles, strips and sparkle stars in palette colours
   if (SIM || ASSET || reduce) return;
-  const r = canvas.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+  const x = canvas.clientWidth / 2, y = canvas.clientHeight / 2;
   const cols = ["#95FFEC", "#10C0C0", "#88E3FF", "#DEB4FF", "#F6EAFF", "#FF9CD8", "#FFC500", "#FFFFFF"], kinds = ["cf-tile", "cf-strip", "cf-star"];
   for (let i = 0; i < 60; i++) {
     const c = document.createElement("i"); c.className = "confetti " + kinds[i % 3]; c.style.background = cols[i % cols.length]; document.getElementById("stage").appendChild(c);
@@ -1010,10 +1022,10 @@ function openGift() {
   if (giftEl.classList.contains("open")) return;
   const alive = pkgs.filter(q => !q.dead && !q.die).length, gold = alive >= 40;
   giftEl.classList.toggle("gold", gold); giftEl.classList.add("open");
-  const g = giftEl.getBoundingClientRect(), cols = ["#99FFED", "#18C4C3", "#8DE4FF", "#E0B7FF", "#D7ACF9", "#FFFFFF", "#FF4A08", "#FFC24D"];
+  const [gx, gy] = centerLocal(giftEl), cols = ["#99FFED", "#18C4C3", "#8DE4FF", "#E0B7FF", "#D7ACF9", "#FFFFFF", "#FF4A08", "#FFC24D"];
   for (let i = 0; i < 70; i++) {   // confetti out of the HUD gift
     const c = document.createElement("i"); c.className = "confetti"; c.style.background = cols[i % cols.length]; document.getElementById("stage").appendChild(c);
-    const a = Math.random() * Math.PI, d = 120 + Math.random() * 260, x = g.left + g.width / 2, y = g.top + g.height / 2;
+    const a = Math.random() * Math.PI, d = 120 + Math.random() * 260, x = gx, y = gy;
     c.animate([{ transform: `translate(${x}px, ${y}px) rotate(0)`, opacity: 1 }, { transform: `translate(${x - Math.cos(a) * d}px, ${y + Math.sin(a) * d * 1.4 + 120}px) rotate(${Math.random() * 720}deg)`, opacity: 0 }],
       { duration: 1400 + Math.random() * 900, easing: "cubic-bezier(.2,.7,.4,1)" }).onfinish = () => c.remove();
   }
@@ -1073,9 +1085,23 @@ sparks.visible = false; scene.add(sparks);
 
 // ---------- clicks ----------
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+// ---------- sideways mode: turns the whole game 90deg for browsers that won't rotate the page ----------
+let sideways = false;
+function toLocal(cx, cy) {   // client point -> point inside the (possibly rotated) stage
+  if (!sideways) { const r = stageEl.getBoundingClientRect(); return [cx - r.left, cy - r.top]; }
+  return [cy, innerWidth - cx];
+}
+function centerLocal(el) { const b = el.getBoundingClientRect(); return toLocal(b.left + b.width / 2, b.top + b.height / 2); }
+function ndcLocal(p) { return [(p.x * 0.5 + 0.5) * canvas.clientWidth, (0.5 - p.y * 0.5) * canvas.clientHeight]; }
+function setSideways(on) {
+  sideways = on; document.documentElement.classList.toggle("sideways", on);
+  document.documentElement.style.setProperty("--svw", innerWidth + "px"); document.documentElement.style.setProperty("--svh", innerHeight + "px");
+  setTimeout(resize, 50);
+}
+addEventListener("resize", () => { if (sideways && innerWidth > innerHeight) setSideways(false); else if (sideways) setSideways(true); });
 function pick(e) {
   if (stuck < 0) return false;
-  const r = canvas.getBoundingClientRect(); ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  const [lx, ly] = toLocal(e.clientX, e.clientY); ndc.set((lx / canvas.clientWidth) * 2 - 1, -(ly / canvas.clientHeight) * 2 + 1);
   ray.setFromCamera(ndc, camera);
   return ray.intersectObjects([stages[stuck].group, stages[stuck].label], true).length > 0;
 }
@@ -1083,9 +1109,8 @@ canvas.addEventListener("pointermove", e => { canvas.style.cursor = (state === "
 // generous tap target: a tap on the stage mesh, on its badge, or anywhere near the stuck stage counts (phones make the stage tiny)
 function nearStuck(e) {
   if (stuck < 0) return false;
-  const r = canvas.getBoundingClientRect(), p = stages[stuck].center.clone().applyMatrix4(trackRoot.matrixWorld).project(camera);
-  const sx = r.left + (p.x * 0.5 + 0.5) * r.width, sy = r.top + (0.5 - p.y * 0.5) * r.height;
-  return Math.hypot(e.clientX - sx, e.clientY - sy) < Math.max(56, Math.min(r.width, r.height) * 0.12);
+  const [sx, sy] = ndcLocal(stages[stuck].center.clone().applyMatrix4(trackRoot.matrixWorld).project(camera)), [lx, ly] = toLocal(e.clientX, e.clientY);
+  return Math.hypot(lx - sx, ly - sy) < Math.max(56, Math.min(canvas.clientWidth, canvas.clientHeight) * 0.12);
 }
 canvas.addEventListener("click", e => { if (state === "stuck" && (pick(e) || nearStuck(e))) respond(); });
 document.getElementById("doom").addEventListener("click", () => { if (state === "stuck") respond(); });
