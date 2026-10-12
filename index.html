@@ -268,6 +268,41 @@ body.asset-mode { background: transparent; } body.asset-mode * { transition: non
 .fix .intro-gift { width: 96px; height: 96px; object-fit: contain; filter: drop-shadow(0 10px 10px rgba(61, 18, 95, .3)); }
 @media (prefers-reduced-motion: reduce) { .hud-gift .box, .hud-gift.wiggle .box { animation: none; } }
 .fix-logo img { display: block; height: 22px; width: auto; }
+
+/* ---------- MOBILE PASS (portrait + landscape): this block is last so it wins the cascade ---------- */
+.rotate-hint { display: none; }
+@media (max-width: 760px), (max-height: 500px) {
+  /* HUD: compact pill pinned top-right, never stretched between top and bottom */
+  .hud { top: calc(10px + env(safe-area-inset-top, 0px)); right: 10px; bottom: auto; left: auto; transform: none; gap: 8px; padding: 4px 12px 4px 4px; font-size: 12px; }
+  .hud-gift { align-self: center; margin: -10px 0 -4px -4px; padding: 4px 10px 4px 6px; gap: 6px; border-radius: 16px; }
+  .hud-gift .box { width: 38px; height: 38px; margin-top: -14px; }
+  .gift-txt small { font-size: 8px; } .hud-gift b { font-size: 15px; }
+  .hud b { font-size: 14px; } .hud-ico { width: 18px; height: 18px; } .hud-lbl { display: none; } .hud .sep { height: 16px; }
+  /* status chip and congrats card stay inside the screen */
+  .chip { font-size: 12px; padding: 8px 12px 8px 10px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+  .celeb { width: min(300px, calc(100vw - 32px)); padding: 16px 18px; } .celeb b { font-size: 24px; } .celeb::after { width: 56px; height: 36px; right: -10px; top: -18px; }
+  /* every pop-up fits the screen and scrolls inside itself */
+  .fix, .fix.intro, .fix.end { width: calc(100vw - 24px); max-height: calc(100% - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); overflow: auto; top: 50%; }
+  .fix-body { padding: 14px 14px 16px; gap: 10px; } .fix-titlerow h2 { font-size: 19px; } .fix-ghost { display: none; }
+  .fix-steps li { padding: 9px 10px 9px 12px; } .fix-steps button { padding: 10px 12px; font-size: 13px; }
+  .intro-body { padding: 16px 16px 18px; } .intro-body h2 { font-size: 22px; } .fix .intro-gift { width: 64px; height: 64px; }
+  .end-reward { padding: 16px 120px 16px 16px; } .end-big { font-size: 28px; } .end-cat { width: 130px; bottom: -24px; }
+  .doom { width: 48px; height: 48px; margin: -24px 0 0 -24px; }
+}
+/* phone held sideways: short screen, so the pop-ups get two columns of room and less vertical padding */
+@media (max-height: 500px) and (orientation: landscape) {
+  .fix, .fix.intro, .fix.end { width: min(620px, calc(100vw - 120px)); }
+  .intro-how { display: none; } .intro-pal { display: none; }
+  .fix-bar { padding: 7px 14px; } .fix-viz { padding: 8px 12px; }
+}
+/* phone held upright: the loop is wide, so suggest turning the phone (dismissable, never blocks play) */
+@media (max-width: 760px) and (orientation: portrait) {
+  .rotate-hint { display: flex; position: absolute; left: 50%; bottom: calc(56px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); align-items: center; gap: 8px;
+    padding: 8px 10px 8px 12px; border-radius: 999px; background: rgba(255,255,255,.92); color: #3D125F; font: 500 12px/1 var(--font-body); white-space: nowrap; box-shadow: 0 8px 20px rgba(20,4,36,.35); z-index: 3; }
+  .rotate-hint svg { width: 18px; height: 18px; animation: tilt 2.4s ease-in-out infinite; } @keyframes tilt { 0%, 30% { transform: rotate(0); } 50%, 80% { transform: rotate(-90deg); } }
+  .rotate-hint button { border: 0; background: #F6EAFF; color: #500E82; font: 700 12px/1 var(--font-body); border-radius: 999px; padding: 6px 9px; cursor: pointer; }
+  .rotate-hint[hidden] { display: none; }
+}
 </style>
 
 </head>
@@ -288,6 +323,7 @@ body.asset-mode { background: transparent; } body.asset-mode * { transition: non
     <g class="wn"><circle cx="50" cy="50" r="47" fill="url(#dmWarn)"/><circle cx="50" cy="50" r="40" fill="none" stroke="#FFFFFF" stroke-opacity=".55" stroke-width="3"/>
       <rect x="44" y="20" width="12" height="40" rx="6" fill="#000000"/><circle cx="50" cy="73" r="7" fill="#000000"/></g>
   </svg></div>
+  <div class="rotate-hint" id="rotateHint" role="note"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2.5" fill="none" stroke="#500E82" stroke-width="2"/><circle cx="12" cy="18.5" r="1" fill="#500E82"/></svg>Turn your phone for the full loop<button type="button" id="rotateOk">OK</button></div>
   <div class="celeb" id="celeb" hidden role="status" aria-live="polite"></div>
   <div class="fix-scrim" id="fixScrim"></div>
   <section class="fix" id="fix" role="dialog" aria-labelledby="fixTitle" hidden></section>
@@ -571,6 +607,8 @@ function showEnd(won, gold) {
   setChip(won ? "healing" : "stuck", won ? `Run complete: all ${STUCKABLE.length} stages fixed` : "All apps lost");
   setTimeout(() => { const b = endEl.querySelector(".end-cta"); if (b) b.focus({ preventScroll: true }); }, 500);
 }
+document.getElementById("rotateOk").addEventListener("click", () => { document.getElementById("rotateHint").hidden = true; });
+addEventListener("orientationchange", () => setTimeout(resize, 250));   // some in-app browsers report the new size late
 function showIntro() {
   const el = document.getElementById("introCard"); failAt = 1e9;
   el.hidden = false; el.className = "fix intro"; void el.offsetWidth; el.classList.add("in"); fixScrim.classList.add("on");
@@ -1045,7 +1083,7 @@ addEventListener("pointermove", e => { look.set(e.clientX / innerWidth - 0.5, e.
 function resize() {
   const w = stageEl.clientWidth, h = stageEl.clientHeight; if (!w || !h) return; const aspect = w / h;
   renderer.setSize(w, h, false); composer.setSize(w, h); bloom.setSize(w, h);
-  const hfov = 17.5 * Math.PI / 180, vfovFromW = 2 * Math.atan(Math.tan(hfov / 2) / aspect);
+  const hfov = (aspect < 1 ? 19.5 : 17.5) * Math.PI / 180, vfovFromW = 2 * Math.atan(Math.tan(hfov / 2) / aspect);
   camera.fov = Math.max(vfovFromW, 10.2 * Math.PI / 180) * 180 / Math.PI;
   camera.aspect = aspect; camera.updateProjectionMatrix();
 }
