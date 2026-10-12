@@ -295,6 +295,10 @@ body.asset-mode { background: transparent; } body.asset-mode * { transition: non
   .fix, .fix.intro, .fix.end { width: min(620px, calc(100vw - 120px)); }
   .intro-how { display: none; } .intro-pal { display: none; }
   .fix-bar { padding: 7px 14px; } .fix-viz { padding: 8px 12px; }
+  /* keep the steps on screen: drop the extras and sit below the HUD */
+  .fix:not(.intro):not(.end) .fix-viz, .fix:not(.intro):not(.end) .fix-status p, .fix-crumb { display: none; }
+  .fix, .fix.intro, .fix.end { top: calc(50% + 20px); max-height: calc(100% - 56px); }
+  .fix-titlerow h2 { font-size: 17px; } .fix-body { gap: 8px; padding: 10px 14px 12px; }
 }
 /* phone held upright: the loop is wide, so suggest turning the phone (dismissable, never blocks play) */
 @media (max-width: 760px) and (orientation: portrait) {
