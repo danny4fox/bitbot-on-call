@@ -69,7 +69,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block
 @media (max-width: 560px) { .celeb { top: auto; bottom: calc(120px + env(safe-area-inset-bottom, 0px)); right: 50%; transform: translate(50%, 14px); } .celeb.show { transform: translate(50%, 0); } }
 .badges { display: flex; gap: 4px; } .badges i { font: 600 10px/1 var(--font-mono); font-style: normal; letter-spacing: .03em; padding: 4px 6px; border-radius: 5px; background: rgba(255,255,255,.07); color: var(--muted); transition: background .4s, color .4s; }
 .badges i.ok { background: #18C4C3; color: #0B2E33; } .badges i.ok::before { content: "\2713\00a0"; }
-.doom { position: absolute; left: 0; top: 0; width: 64px; height: 64px; margin: -32px 0 0 -32px; pointer-events: none; filter: drop-shadow(0 6px 10px rgba(20, 4, 36, .45)); }
+.doom { position: absolute; left: 0; top: 0; width: 64px; height: 64px; margin: -32px 0 0 -32px; pointer-events: auto; cursor: pointer; filter: drop-shadow(0 6px 10px rgba(20, 4, 36, .45)); }
 .doom svg { width: 100%; height: 100%; display: block; } .doom .wn { display: none; } .doom.urgent .cd { display: none; } .doom.urgent .wn { display: inline; }
 .doom text { font: 500 17px var(--font-mono); fill: #FFFFFF; }
 .doom.urgent { animation: warnPulse .5s ease-in-out infinite alternate; }
@@ -1075,8 +1075,16 @@ function pick(e) {
   ray.setFromCamera(ndc, camera);
   return ray.intersectObjects([stages[stuck].group, stages[stuck].label], true).length > 0;
 }
-canvas.addEventListener("pointermove", e => { canvas.style.cursor = (state === "stuck" && pick(e)) ? "pointer" : "default"; });
-canvas.addEventListener("click", e => { if (state === "stuck" && pick(e)) respond(); });
+canvas.addEventListener("pointermove", e => { canvas.style.cursor = (state === "stuck" && (pick(e) || nearStuck(e))) ? "pointer" : "default"; });
+// generous tap target: a tap on the stage mesh, on its badge, or anywhere near the stuck stage counts (phones make the stage tiny)
+function nearStuck(e) {
+  if (stuck < 0) return false;
+  const r = canvas.getBoundingClientRect(), p = stages[stuck].center.clone().applyMatrix4(trackRoot.matrixWorld).project(camera);
+  const sx = r.left + (p.x * 0.5 + 0.5) * r.width, sy = r.top + (0.5 - p.y * 0.5) * r.height;
+  return Math.hypot(e.clientX - sx, e.clientY - sy) < Math.max(56, Math.min(r.width, r.height) * 0.12);
+}
+canvas.addEventListener("click", e => { if (state === "stuck" && (pick(e) || nearStuck(e))) respond(); });
+document.getElementById("doom").addEventListener("click", () => { if (state === "stuck") respond(); });
 
 const look = new THREE.Vector2();
 addEventListener("pointermove", e => { look.set(e.clientX / innerWidth - 0.5, e.clientY / innerHeight - 0.5); });
