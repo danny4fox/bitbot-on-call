@@ -535,7 +535,7 @@ Promise.all([loadGLB("cicd_track.glb.txt"), loadGLB("bitbot_hero.glb.txt")]).the
       o.geometry.translate(-c.x, -c.y, -c.z); o.position.add(c.clone().multiply(o.scale).applyQuaternion(o.quaternion)); mouth = o; mouthScaleY = o.scale.y;
     }
   });
-  statusEl.hidden = true; resize(); camera.updateMatrixWorld(true); buildParticles(); buildPackages(); setChip("running", `Fix ${STUCKABLE.length} stuck stages to unlock a surprise`);
+  statusEl.hidden = true; resize(); camera.updateMatrixWorld(true); if (!HERO) buildParticles(); buildPackages();   // no floating tiles in the homepage hero setChip("running", `Fix ${STUCKABLE.length} stuck stages to unlock a surprise`);
   const h0 = homePose("camera"); bot.position.copy(h0.pos); yaw = h0.yaw; play("Idle");
   if (ASSET) { renderAsset(ASSET); return; }
   if (SIM || location.hash === "#demo") scheduleFailure(3);
