@@ -329,6 +329,9 @@ html.hero-mode .hud { opacity: 0; pointer-events: none; }
 html.hero-mode.hud-on .hud { opacity: 1; pointer-events: auto; transition: opacity .6s ease; }
 html.hero-mode .rotate-hint { display: none !important; }
 html.hero-mode body, html.hero-mode .stage { background: transparent; }
+
+/* hero embed: let vertical swipes scroll the page (taps still play) */
+html.hero-mode canvas { touch-action: pan-y; }
 </style>
 
 </head>
@@ -646,6 +649,10 @@ addEventListener("message", e => {   // the homepage tells the game when the her
   if (!HERO || !e.data || e.data.type !== "bitbot:start" || heroGo) return;
   heroGo = true; if (bot && state === "running" && fixedStages.size === 0) scheduleFailure(1.5);
 });
+// embedded as a page hero: wheel/trackpad scrolling over the game scrolls the website instead of stopping at the iframe
+if (HERO && window.top !== window) {
+  addEventListener("wheel", e => { e.preventDefault(); parent.postMessage({ type: "bitbot:scroll", dy: e.deltaY * (e.deltaMode === 1 ? 16 : 1) }, "*"); }, { passive: false });
+}
 function showExplainer(stageIdx) {   // after the first fix: tell people this is a game they can keep playing
   const el = document.getElementById("introCard"); holdFailures = true; failAt = 1e9;
   el.querySelector("#introTitle").textContent = `Nice save! ${NICE(STAGES[stageIdx])} is fixed.`;
