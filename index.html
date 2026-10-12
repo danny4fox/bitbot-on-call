@@ -319,6 +319,9 @@ html.sideways .fix, html.sideways .fix.intro, html.sideways .fix.end { width: mi
 html.sideways .fix:not(.intro):not(.end) .fix-viz, html.sideways .fix:not(.intro):not(.end) .fix-status p, html.sideways .fix-crumb, html.sideways .intro-how, html.sideways .intro-pal { display: none; }
 html.sideways .celeb { width: min(300px, calc(var(--svh, 100vh) - 32px)); }
 .rotate-hint #goSideways { background: #500E82; color: #FFFFFF; }
+
+/* HUD centred at the top on every screen */
+.hud, html.sideways .hud { left: 50%; right: auto; transform: translateX(-50%); }
 </style>
 
 </head>
