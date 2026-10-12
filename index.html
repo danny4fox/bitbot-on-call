@@ -322,6 +322,12 @@ html.sideways .celeb { width: min(300px, calc(var(--svh, 100vh) - 32px)); }
 
 /* HUD centred at the top on every screen */
 .hud, html.sideways .hud { left: 50%; right: auto; transform: translateX(-50%); }
+
+/* homepage hero mode: the HUD and portrait hint stay hidden until the explainer has been seen */
+html.hero-mode .hud { opacity: 0; pointer-events: none; transition: opacity .6s ease; }
+html.hero-mode.hud-on .hud { opacity: 1; pointer-events: auto; }
+html.hero-mode .rotate-hint { display: none !important; }
+html.hero-mode body, html.hero-mode .stage { background: transparent; }
 </style>
 
 </head>
@@ -339,8 +345,8 @@ html.sideways .celeb { width: min(300px, calc(var(--svh, 100vh) - 32px)); }
       <path id="doomSlice" fill="url(#dmSlice)" d=""/>
       <g id="doomHand"><path d="M48 50 L50 17 L52 50 Z" fill="#500E82" stroke="#500E82" stroke-width="3" stroke-linejoin="round"/></g>
       <circle cx="50" cy="50" r="15" fill="#500E82"/><text id="doomN" x="50" y="56.5" text-anchor="middle">5</text></g>
-    <g class="wn"><circle cx="50" cy="50" r="47" fill="url(#dmWarn)"/><circle cx="50" cy="50" r="40" fill="none" stroke="#FFFFFF" stroke-opacity=".55" stroke-width="3"/>
-      <rect x="44" y="20" width="12" height="40" rx="6" fill="#000000"/><circle cx="50" cy="73" r="7" fill="#000000"/></g>
+    <g class="wn"><circle cx="50" cy="50" r="47" fill="#0B0613"/><circle cx="50" cy="50" r="40" fill="none" stroke="#E5113C" stroke-width="3.5"/>
+      <rect x="44.5" y="23" width="11" height="34" rx="5.5" fill="#FFFFFF"/><circle cx="50" cy="70" r="6.2" fill="#FFFFFF"/></g>
   </svg></div>
   <div class="rotate-hint" id="rotateHint" role="note"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2.5" fill="none" stroke="#500E82" stroke-width="2"/><circle cx="12" cy="18.5" r="1" fill="#500E82"/></svg>Turn your phone, or <button type="button" id="goSideways">Play sideways</button><button type="button" id="rotateOk" aria-label="Dismiss">&times;</button></div>
   <button type="button" class="exit-sideways" id="exitSideways">Exit sideways</button>
@@ -529,6 +535,7 @@ Promise.all([loadGLB("cicd_track.glb.txt"), loadGLB("bitbot_hero.glb.txt")]).the
   const h0 = homePose("camera"); bot.position.copy(h0.pos); yaw = h0.yaw; play("Idle");
   if (ASSET) { renderAsset(ASSET); return; }
   if (SIM || location.hash === "#demo") scheduleFailure(3);
+  else if (HERO) { document.documentElement.classList.add("hero-mode"); failAt = 1e9; if (heroGo || window.top === window) scheduleFailure(2.5); }
   else showIntro();   // the game starts when the player presses Start
   const q = new URLSearchParams(location.search); if (q.get("sim")) { try { window.__simulate(+q.get("sim"), +q.get("clickat") || 0); if (q.get("dbg")) document.body.setAttribute("data-dbg", JSON.stringify(window.__dbg())); if (q.has("end")) { showEnd(q.get("end") !== "lose"); endEl.style.animationDuration = "1ms"; } } catch (e) { document.body.setAttribute("data-err", e.message + " | " + (e.stack || "").split("\n").slice(0, 3).join(" / ")); } }
 }).catch(() => { statusEl.textContent = "The 3D files could not be loaded. Reload the page to try again."; });
@@ -631,6 +638,26 @@ document.getElementById("rotateOk").addEventListener("click", () => { document.g
 document.getElementById("goSideways").addEventListener("click", () => setSideways(true));
 document.getElementById("exitSideways").addEventListener("click", () => setSideways(false));
 addEventListener("orientationchange", () => setTimeout(resize, 250));   // some in-app browsers report the new size late
+// ---------- homepage hero mode ----------
+const HERO = new URLSearchParams(location.search).has("hero");
+let heroGo = false, heroExplained = false, holdFailures = false;
+addEventListener("message", e => {   // the homepage tells the game when the hero is in view
+  if (!HERO || !e.data || e.data.type !== "bitbot:start" || heroGo) return;
+  heroGo = true; if (bot && state === "running" && fixedStages.size === 0) scheduleFailure(1.5);
+});
+function showExplainer(stageIdx) {   // after the first fix: tell people this is a game they can keep playing
+  const el = document.getElementById("introCard"); holdFailures = true; failAt = 1e9;
+  el.querySelector("#introTitle").textContent = `Nice save! ${NICE(STAGES[stageIdx])} is fixed.`;
+  el.querySelector(".intro-body > p").innerHTML = "This is a game. Fix <b>4 more</b> stuck stages to win the <b>mystery box</b>.";
+  el.querySelector("#introGo").textContent = "Keep playing";
+  el.hidden = false; el.className = "fix intro"; void el.offsetWidth; el.classList.add("in"); fixScrim.classList.add("on");
+  setTimeout(() => document.getElementById("introGo").focus({ preventScroll: true }), 500);
+  document.getElementById("introGo").onclick = () => {
+    el.classList.remove("in"); el.classList.add("out"); fixScrim.classList.remove("on");
+    setTimeout(() => { el.hidden = true; }, 650);
+    document.documentElement.classList.add("hud-on"); holdFailures = false; scheduleFailure(2.5);
+  };
+}
 function showIntro() {
   const el = document.getElementById("introCard"); failAt = 1e9;
   el.hidden = false; el.className = "fix intro"; void el.offsetWidth; el.classList.add("in"); fixScrim.classList.add("on");
@@ -817,7 +844,7 @@ const GLANCE_GAPS = [5, 5.5, 4.2, 6, 4.8], GLANCE_HOLDS = [2, 3, 2.4, 1.8, 2.8];
 let glance = { on: false, at: 1e9, end: 0, i: 0 }, stuckSide = 1, stuckCentral = false;
 const NECK_YAW = THREE.MathUtils.degToRad(45), NECK_UP = 0.5, NECK_DOWN = 0.55;   // neck range: 45 deg left/right, no sideways tilt
 function setChip(st, html) { chip.dataset.state = st; chipText.innerHTML = html; }
-function scheduleFailure(sec) { failAt = fixedStages.size === STUCKABLE.length ? 1e9 : timer + sec; }
+function scheduleFailure(sec) { failAt = (fixedStages.size === STUCKABLE.length || holdFailures || (HERO && !heroGo && window.top !== window)) ? 1e9 : timer + sec; }
 function fail() {
   let s; const fq = new URLSearchParams(location.search).get("stage"); const left = STUCKABLE.filter(i => !fixedStages.has(i));
   if (fq === null && !left.length) return;                                  // all fixed: the run is over
@@ -1009,6 +1036,7 @@ function celebConfetti() {   // brand confetti from the centre: tiles, strips an
 }
 function giftGotFix(stageIdx) {
   const n = fixedStages.size, left = STUCKABLE.length - n;
+  if (HERO && !heroExplained) { heroExplained = true; document.getElementById("giftCount").textContent = `${n}/${STUCKABLE.length}`; giftEl.style.setProperty("--fill", n / STUCKABLE.length); setTimeout(() => showExplainer(stageIdx), 900); return; }
   giftEl.classList.remove("wiggle"); void giftEl.offsetWidth; giftEl.classList.add("wiggle");
   giftEl.style.setProperty("--fill", n / STUCKABLE.length);
   document.getElementById("giftCount").textContent = `${n}/${STUCKABLE.length}`;
