@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Bitbot On Call</title>
+<script>if (/[?&]hero\b/.test(location.search)) document.documentElement.classList.add("hero-mode");   /* hide the HUD before first paint */</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -324,8 +325,8 @@ html.sideways .celeb { width: min(300px, calc(var(--svh, 100vh) - 32px)); }
 .hud, html.sideways .hud { left: 50%; right: auto; transform: translateX(-50%); }
 
 /* homepage hero mode: the HUD and portrait hint stay hidden until the explainer has been seen */
-html.hero-mode .hud { opacity: 0; pointer-events: none; transition: opacity .6s ease; }
-html.hero-mode.hud-on .hud { opacity: 1; pointer-events: auto; }
+html.hero-mode .hud { opacity: 0; pointer-events: none; }
+html.hero-mode.hud-on .hud { opacity: 1; pointer-events: auto; transition: opacity .6s ease; }
 html.hero-mode .rotate-hint { display: none !important; }
 html.hero-mode body, html.hero-mode .stage { background: transparent; }
 </style>
